@@ -1,4 +1,4 @@
-baseurl = "/"
+baseurl = "https://jamesngill.net"
 title = "James N Gill"
 languageCode = "en-gb"
 paginate = "10" # Number of posts per page
