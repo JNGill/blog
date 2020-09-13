@@ -1,0 +1,22 @@
+---
+title: Test Post
+author: James Gill
+date: '2020-09-13'
+slug: test-post
+categories:
+  - R
+tags:
+  - R Markdown
+description: ''
+thumbnail: ''
+---
+
+# Test Post
+
+Testing
+
+```{r cars}
+summary(cars)
+fit <- lm(dist ~ speed, data = cars)
+fit
+```
