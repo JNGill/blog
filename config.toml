@@ -1,36 +1,47 @@
 baseurl = "/"
-title = "Mainroad"
-languageCode = "en-us"
+title = "James N Gill"
+languageCode = "en-gb"
 paginate = "10" # Number of posts per page
 theme = "Mainroad"
-disqusShortname = "" # Enable comments by entering your Disqus shortname
-googleAnalytics = "" # Enable Google Analytics by entering your tracking id
+# Per blogdown docs
 ignoreFiles = ["\\.Rmd$", "\\.Rmarkdown$", "_files$", "_cache$"]
 
 [Author]
-  name = "John Doe"
-  bio = "John Doe's true identity is unknown. Maybe he is a successful blogger or writer. Nobody knows it."
-  avatar = "img/avatar.png"
+  name = "James N Gill"
+  bio = "James N Gill is a healthcare information analyst, based in the UK."
+  avatar = "img/avatar.jpg"
 
 [Params]
-  description = "John Doe's Personal blog about everything" # Description of your site
+  description = "James Gill's blog." # Description of your site
   opengraph = true
   twitter_cards = false
   readmore = false # Show "Read more" button in list if true
   authorbox = true
   pager = true
   post_meta = ["date", "categories"] # Order of post meta information
+  mathjax = true # Enable MathJax
+  mathjaxPath = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.6/MathJax.js" # Specify MathJax path
+  mathjaxConfig = "TeX-AMS-MML_HTMLorMML" # Specify MathJax config
+
+[Params.style.vars]
+  highlightColor = "#0072CE"
 
 [Params.logo]
-  subtitle = "Just another site" # Logo subtitle
-
+  subtitle = "Healthcare information analysis" # Logo subtitle
+  image = "img/avatar.jpg"
+  
 [Params.sidebar]
   home = "right"   # Configure layout for home page
   list = "right"   # Configure layout for list pages
   single = "right" # Configure layout for single pages
   # Enable widgets in given order
-  widgets = ["search", "recent", "categories", "taglist"]
+  widgets = ["search", "recent", "categories", "taglist", "social"]
 
 [Params.widgets]
   recent_num = 5 # Set the number of articles in the "Recent articles" widget
   tags_counter = false # Enable counter for each tag in "Tags" widget (disabled by default)
+  
+[Params.widgets.social]
+  linkedin = "jamesngill"
+  github = "JNGill"
+  #email = "james@jamesngill.net" # When this is configured
