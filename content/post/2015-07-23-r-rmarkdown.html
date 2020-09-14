@@ -6,42 +6,104 @@ categories: ["R"]
 tags: ["R Markdown", "plot", "regression"]
 
 lead: "This is the lead."
+draft: true
 ---
 
+<script src="/rmarkdown-libs/accessible-code-block/empty-anchor.js"></script>
+<style type="text/css">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; } /* Alert */
+code span.an { color: #008000; } /* Annotation */
+code span.at { } /* Attribute */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #0000ff; } /* ControlFlow */
+code span.ch { color: #008080; } /* Char */
+code span.cn { } /* Constant */
+code span.co { color: #008000; } /* Comment */
+code span.cv { color: #008000; } /* CommentVar */
+code span.do { color: #008000; } /* Documentation */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.im { } /* Import */
+code span.in { color: #008000; } /* Information */
+code span.kw { color: #0000ff; } /* Keyword */
+code span.op { } /* Operator */
+code span.ot { color: #ff4000; } /* Other */
+code span.pp { color: #ff4000; } /* Preprocessor */
+code span.sc { color: #008080; } /* SpecialChar */
+code span.ss { color: #008080; } /* SpecialString */
+code span.st { color: #008080; } /* String */
+code span.va { } /* Variable */
+code span.vs { color: #008080; } /* VerbatimString */
+code span.wa { color: #008000; font-weight: bold; } /* Warning */
+</style>
 
 
 <div id="r-markdown" class="section level1">
 <h1>R Markdown</h1>
 <p>This is an RMarkdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <a href="http://rmarkdown.rstudio.com" class="uri">http://rmarkdown.rstudio.com</a>.</p>
 <p>You can embed an R code chunk like this:</p>
-<pre class="r"><code>summary(cars)
-##      speed           dist       
-##  Min.   : 4.0   Min.   :  2.00  
-##  1st Qu.:12.0   1st Qu.: 26.00  
-##  Median :15.0   Median : 36.00  
-##  Mean   :15.4   Mean   : 42.98  
-##  3rd Qu.:19.0   3rd Qu.: 56.00  
-##  Max.   :25.0   Max.   :120.00
-fit &lt;- lm(dist ~ speed, data = cars)
-fit
-## 
-## Call:
-## lm(formula = dist ~ speed, data = cars)
-## 
-## Coefficients:
-## (Intercept)        speed  
-##     -17.579        3.932</code></pre>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">summary</span>(cars)</span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="co">##      speed           dist       </span></span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="co">##  Min.   : 4.0   Min.   :  2.00  </span></span>
+<span id="cb1-4"><a href="#cb1-4"></a><span class="co">##  1st Qu.:12.0   1st Qu.: 26.00  </span></span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="co">##  Median :15.0   Median : 36.00  </span></span>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="co">##  Mean   :15.4   Mean   : 42.98  </span></span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="co">##  3rd Qu.:19.0   3rd Qu.: 56.00  </span></span>
+<span id="cb1-8"><a href="#cb1-8"></a><span class="co">##  Max.   :25.0   Max.   :120.00</span></span>
+<span id="cb1-9"><a href="#cb1-9"></a>fit &lt;-<span class="st"> </span><span class="kw">lm</span>(dist <span class="op">~</span><span class="st"> </span>speed, <span class="dt">data =</span> cars)</span>
+<span id="cb1-10"><a href="#cb1-10"></a>fit</span>
+<span id="cb1-11"><a href="#cb1-11"></a><span class="co">## </span></span>
+<span id="cb1-12"><a href="#cb1-12"></a><span class="co">## Call:</span></span>
+<span id="cb1-13"><a href="#cb1-13"></a><span class="co">## lm(formula = dist ~ speed, data = cars)</span></span>
+<span id="cb1-14"><a href="#cb1-14"></a><span class="co">## </span></span>
+<span id="cb1-15"><a href="#cb1-15"></a><span class="co">## Coefficients:</span></span>
+<span id="cb1-16"><a href="#cb1-16"></a><span class="co">## (Intercept)        speed  </span></span>
+<span id="cb1-17"><a href="#cb1-17"></a><span class="co">##     -17.579        3.932</span></span></code></pre></div>
 </div>
 <div id="including-plots" class="section level1">
 <h1>Including Plots</h1>
 <p>You can also embed plots. See Figure <a href="#fig:pie">1</a> for example:</p>
-<pre class="r"><code>par(mar = c(0, 1, 0, 1))
-pie(
-  c(280, 60, 20),
-  c(&#39;Sky&#39;, &#39;Sunny side of pyramid&#39;, &#39;Shady side of pyramid&#39;),
-  col = c(&#39;#0292D8&#39;, &#39;#F7EA39&#39;, &#39;#C4B632&#39;),
-  init.angle = -50, border = NA
-)</code></pre>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">1</span>))</span>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="kw">pie</span>(</span>
+<span id="cb2-3"><a href="#cb2-3"></a>  <span class="kw">c</span>(<span class="dv">280</span>, <span class="dv">60</span>, <span class="dv">20</span>),</span>
+<span id="cb2-4"><a href="#cb2-4"></a>  <span class="kw">c</span>(<span class="st">&#39;Sky&#39;</span>, <span class="st">&#39;Sunny side of pyramid&#39;</span>, <span class="st">&#39;Shady side of pyramid&#39;</span>),</span>
+<span id="cb2-5"><a href="#cb2-5"></a>  <span class="dt">col =</span> <span class="kw">c</span>(<span class="st">&#39;#0292D8&#39;</span>, <span class="st">&#39;#F7EA39&#39;</span>, <span class="st">&#39;#C4B632&#39;</span>),</span>
+<span id="cb2-6"><a href="#cb2-6"></a>  <span class="dt">init.angle =</span> <span class="dv">-50</span>, <span class="dt">border =</span> <span class="ot">NA</span></span>
+<span id="cb2-7"><a href="#cb2-7"></a>)</span></code></pre></div>
 <div class="figure"><span id="fig:pie"></span>
 <img src="/post/2015-07-23-r-rmarkdown_files/figure-html/pie-1.png" alt="A fancy pie chart." width="672" />
 <p class="caption">

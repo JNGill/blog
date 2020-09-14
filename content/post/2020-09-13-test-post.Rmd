@@ -9,14 +9,23 @@ tags:
   - R Markdown
 description: 'A description of the post'
 thumbnail: ''
+draft: true
 ---
 
 # Test Post
 
 Testing
 
-```{r cars}
+```{r label='cars'}
 summary(cars)
 fit <- lm(dist ~ speed, data = cars)
 fit
+```
+
+# SQL
+
+```{sql label='test', eval=FALSE}
+SELECT *
+  
+FROM table1
 ```
