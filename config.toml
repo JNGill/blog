@@ -1,4 +1,5 @@
-baseurl = "https://jamesngill.net"
+#baseurl = "https://jamesngill.net"
+baseurl = "/"
 title = "James N Gill"
 languageCode = "en-gb"
 paginate = "10" # Number of posts per page
@@ -35,7 +36,7 @@ ignoreFiles = ["\\.Rmd$", "\\.Rmarkdown$", "_files$", "_cache$"]
   list = "right"   # Configure layout for list pages
   single = "right" # Configure layout for single pages
   # Enable widgets in given order
-  widgets = ["search", "recent", "categories", "taglist", "social"]
+  widgets = ["search", "recent", "taglist", "social"]
 
 [Params.widgets]
   recent_num = 5 # Set the number of articles in the "Recent articles" widget
