@@ -32,6 +32,8 @@ The following pages on Microsoft Docs are an excellent resource for learning mor
 - [Using Events with Automation](https://docs.microsoft.com/en-us/office/vba/outlook/concepts/electronic-business-cards/using-events-with-automation)
 - [Working with Outlook Events](https://docs.microsoft.com/en-us/office/vba/outlook/concepts/electronic-business-cards/working-with-outlook-events)
 
+The below code does not contain any error-handling. If you come to rely on a piece of VBA, developing error-handling is recommended.
+
 ```{vb ThisOutlookSession, eval=FALSE}
 'Declare event-handler
 Private WithEvents inbox As Outlook.Items
