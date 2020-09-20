@@ -1,0 +1,49 @@
+---
+title: 'Sustainable Excel: One-click refresh'
+author: James Gill
+date: '2020-09-27'
+slug: sustainable-excel-one-click-refresh
+categories:
+  - Excel
+tags:
+  - Excel
+  - automation
+  - Early career
+  - VBA
+description: 'A pattern for creating sustainable routine reports in Excel.'
+thumbnail: ''
+summary: 'A pattern for creating sustainable routine reports in Excel.'
+---
+
+Each of the NHS organisations I've worked in has used the same essential stack for creating day-to-day analyst products. That stack consists of writing SQL queries in SQL Server Management Studio to extract data from a data warehouse, and then placing that data into Excel to manipulate and present it. This is a common workflow both for ad-hoc and routine reports.
+
+Inheriting a report based on this stack from a colleague can be challenging. It is not always clear which version of a SQL script was used to generate the data in a particular file, or exactly what manipulations were undertaken on that data extract. This can affect the reliability of figures and undermine the ability to compare figures between reports. This undermines users' confidence in the products.
+
+Even if the procedure is well-documented, it may be that there is a fiddly sequence of manual steps to undertake each week (copying and pasting data, extending the ranges of formulas, and so on). In the scenario where you have a number of such reports you need to refresh weekly, or even daily, this can seriously cramp your style.
+
+Fortunately, there is a pattern which you can use to maximise reliability and maintainability, while also reducing the time to refresh to a minimum. This pattern is often referred to as "one-click refresh". I owe a debt of gratitude to several current and former colleagues who informed my understanding of this approach^[Particularly Greg Curzon, Mark Geraghty and Marcus Yarwood.]. The details below are focussed on Excel 2010, although the approach does work well in more current versions too.
+
+In this pattern, reports are set up as follows:
+
+1. Write concise, simple SQL queries. 
+    - If you need to write significant business logic into the query, use a view or stored procedure, and place the statement that creates the view or stored procedure under version control. That way the business logic can be re-used without risking it getting out of sync with logic used in other reports. 
+    - Make sure the SQL query has a sensible header.
+    - Make a conscious decision about the granularity of your query. Will your end-users need record-level data, or can you reduce the size of the workbook and increase responsiveness by using a `GROUP BY`?
+    - If the data you need is not on your SQL Server, for example you receive it via email, creating a process to load it into the database is typically an investment that pays off. It's rare that data is used for only a single report.
+2. [Create a data connection in Excel](https://support.microsoft.com/en-us/office/connect-to-import-external-data-9967afd8-85ee-4df3-aa06-753bcc1a2724). 
+    - It is best to place the data in a table, rather than a PivotTable. This allows you the flexibility to add columns calculated using Excel formulas, for example to take advantage of Excel string formatting options. Using tables also allows you to use [structured references](https://support.microsoft.com/en-us/office/using-structured-references-with-excel-tables-f5ed2452-2337-4f71-bed3-c8ae6d2b276e) in your formulas, which makes them respond as the data changes in size over time. You can also re-order the columns in the source data without pain.
+    - I usually uncheck the "enable background query" option, which ensures that PivotTables will refresh correctly when the data connection is refreshed.
+    - [Giving the table a sensible name](https://support.microsoft.com/en-us/office/rename-an-excel-table-fbf49a4f-82a3-43eb-8ba2-44d21233b114) both aids maintainability and also helps you to benefit from auto-completion in a workbook where you are working with more than one data-set.
+3. Create PivotTables from the table to perform your analysis.
+    - PivotCharts have pros and cons. In some circumstances, you might find it's preferable to use a regular Excel chart which is pointed to a [dynamic named range](https://peltiertech.com/Excel/Charts/DynamicColumnChart1.html).
+    - Even if the end-product is a listing (e.g. of appointments), I sometimes find it advantageous to use the PivotTable "Show in tabular form" option with subtotals and grand totals switched off. It's easier to re-order columns.
+4. If you know this will be a routine report, document the report.
+    - Use the standard documentation in your department.
+    - Make sure to include a brief explanation of why the report was created, and who originally requested it.
+    - If you do anything un-orthodox, such as creative use of macros, hidden columns, complex dynamic named ranges or non-standard business logic, give a brief explanation.
+    
+All the data and PivotTables in a workbook set up this way can be refreshed at once by [selecting Refresh All under PivotTable Options in the Ribbon](https://support.microsoft.com/en-us/office/refresh-pivottable-data-6d24cece-a038-468a-8176-8b6568ca9be2#ID0EAACAAA=Office_2010). 
+
+Using this approach is a no-brainer for routine reports, but I've also found it well-worth getting into the habit of using this for ad-hoc work too. It happens frequently that users want an ad-hoc refreshed three or six months after it was originally created, or that you need to refresh an ad-hoc of a colleague for a user. Using this standardised approach makes this task very straightforward.
+
+The same effect can be achieved by writing `ThisWorkbook.RefreshAll` in VBA. That means that if you have a number of different reports which are all set up using this pattern, you can automate refreshing them all by [looping through the files in the folder](https://stackoverflow.com/questions/43367671/vba-excel-iterating-through-files-in-folder-via-filesystemobject), using the `RefreshAll` method on each file, saving them, and emailing them. This can considerably reduce the time overhead of routine Excel reporting.
