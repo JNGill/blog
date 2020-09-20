@@ -13,10 +13,13 @@ sidebar: false
 
 ## NHS
 
-#### NHS Information
+#### NHS Information Analysis
 
 - [Kurtosis](https://www.kurtosis.co.uk/)
 - [NHS-R Community](https://nhsrcommunity.com/)
+- [Chris Mainey](https://www.mainard.co.uk/)
+- [Chris Beeley](https://chrisbeeley.net/)
+- [John Mackintosh](https://johnmackintosh.net/home/)
 
 #### NHS Reference
 
@@ -31,7 +34,7 @@ sidebar: false
 
 #### Professional bodies
 
-- [Association of Professional Healthcare Analysts](https://www.aphanalysts.org/)
+- [Association of Professional Healthcare Analysts](https://www.aphanalysts.org/) - membership includes excellent-value training, tailored to NHS analysts.
 - [Royal Statistical Society](https://rss.org.uk/)
 - [UNISON](https://www.unison.org.uk/) - the trade union for public sector workers.
 
@@ -76,7 +79,8 @@ sidebar: false
 ## Books
 
 - [Elements of Statistical Learning](https://web.stanford.edu/~hastie/Papers/ESLII.pdf)
-- [blogdown](https://bookdown.org/yihui/blogdown/) - manual for the package used to write this website.
+- [blogdown](https://bookdown.org/yihui/blogdown/) - manual for the package used to write this website. I use the Netlify/Github option.
 - [Geocomputation with R](https://bookdown.org/robinlovelace/geocompr/)
 - [R for Data Science](https://r4ds.had.co.nz/)
 - [ModernDive](https://moderndive.com/index.html) - learn the basic statistical workflow and R at the same time.
+- [The R Markdown Cookbook](https://bookdown.org/yihui/rmarkdown-cookbook/)
