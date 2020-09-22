@@ -1,0 +1,99 @@
+---
+title: Automatically saving emails using Outlook VBA
+author: James Gill
+date: '2020-09-20'
+slug: automatically-saving-emails-using-outlook-vba
+categories:
+  - VBA
+tags:
+  - VBA
+  - automation
+description: ''
+thumbnail: ''
+summary: 'Many organisations have evolved processes that require colleagues to email information to one another, or receive information by email from another organisation. In this case, you may want to automatically perform actions such as saving an email and its attachments to a folder when received if it meets certain criteria. Microsoft Outlook is ubiquituous in NHS organisations, and it is possible to automate Outlook processes using VBA.'
+---
+
+Many organisations have evolved processes that require colleagues to email information to one another, or receive information by email from another organisation.^[This is rarely the right solution to the problem of moving data around an organisation. Using a webform or configuring an existing electronic record system is more reliable, easier to automate and likely to lead to better data quality than emailing Excel attachments. However, you may find organisational constraints mean you must work within the constraints of email.] In this case, you may want to automatically perform actions such as saving an email and its attachments to a folder when it's received if it meets certain criteria. Microsoft Outlook is ubiquituous in NHS organisations, and it's possible to automate Outlook processes using VBA.
+
+The script below demonstrates one way of achieving this. In order to use this code:
+
+1. [Show the Developer tab on the Ribbon.](https://support.microsoft.com/en-us/office/show-the-developer-tab-e1192344-5e56-4d45-931b-e5fd9bea2d45)
+2. [Enable macros in the Trust Center.](https://support.microsoft.com/en-us/office/enable-or-disable-macros-in-office-files-12b036fd-d140-4e74-b45e-16fed1a7e5c6)
+3. Open the VBA IDE from the Developer tab, and paste the code into the `ThisOutlookSession` module.
+4. In the VBA IDE, add a reference to the [Microsoft Scripting Runtime.](https://docs.microsoft.com/en-us/office/vba/language/how-to/check-or-add-an-object-library-reference)
+5. Change the variable `fldr` so that it corresponds to the desired folder for saving.
+6. Add logic to specify which kinds of emails should be saved, if desired (e.g. certain senders or subject lines).
+7. Save, close and re-open Outlook.
+
+Be aware that if you have multiple email accounts, you may need to amend the `Application_Startup` sub to pick the correct one. The process will only run when Outlook is open (it will fire for emails received while Outlook is closed when Outlook is next opened).
+
+The following pages on Microsoft Docs are an excellent resource for learning more about event-driven automation in Outlook:
+
+- [Using Events with Automation](https://docs.microsoft.com/en-us/office/vba/outlook/concepts/electronic-business-cards/using-events-with-automation)
+- [Working with Outlook Events](https://docs.microsoft.com/en-us/office/vba/outlook/concepts/electronic-business-cards/working-with-outlook-events)
+
+The below code does not contain any error-handling. If you come to rely on a piece of VBA, developing error-handling is recommended.
+
+```{vb ThisOutlookSession, eval=FALSE}
+'Declare event-handler
+Private WithEvents inbox As Outlook.Items
+
+Private Sub Application_Startup()
+
+'Register the event-handler at startup
+Dim ol As Outlook.Application
+
+Set ol = Outlook.Application
+Set inbox = ol.GetNamespace("MAPI").GetDefaultFolder(olFolderInbox).Items
+
+End Sub
+
+Private Sub inbox_ItemAdd(ByVal Item As Object)
+
+Dim fso As New FileSystemObject
+
+Set inbox = Outlook.Application.GetNamespace("MAPI").GetDefaultFolder(olFolderInbox).Items
+Set itm = inbox(inbox.Count)
+
+'Is the item an email (not a calendar event, contact, etc)
+If TypeName(itm) = "MailItem" Then
+
+    'Does the item have attachments?
+    If itm.Attachments.Count > 0 Then
+    
+        'Does the folder we want to use exist?
+        fldr = "C:\users\etc\email\" & Format(Now(), "yyyy-mm-dd hh-mm-ss") & "\"
+        If Not fso.FolderExists(fldr) Then
+            fso.CreateFolder fldr
+        End If
+        
+        'Save the attachments in fldr
+        For Each attach In itm.Attachments
+            attach.SaveAsFile fldr & attach.DisplayName
+        Next attach
+        
+        'Save the email in fldr
+        itm.SaveAs fldr & ReplaceIllegalCharacters(itm.Subject, " ") & ".msg"
+        
+    End If
+    
+End If
+
+End Sub
+
+Public Function ReplaceIllegalCharacters(strIn As String, strChar As String) As String
+
+'From https://stackoverflow.com/questions/50846340/remove-illegal-characters-while-saving-workbook-excel-vba
+    Dim strSpecialChars As String
+    Dim i As Long
+    strSpecialChars = "~""#%&*:<>?{|}/\[]" & Chr(10) & Chr(13)
+
+    For i = 1 To Len(strSpecialChars)
+        strIn = Replace(strIn, Mid$(strSpecialChars, i, 1), strChar)
+    Next
+
+    ReplaceIllegalCharacters = strIn
+End Function
+
+
+```
