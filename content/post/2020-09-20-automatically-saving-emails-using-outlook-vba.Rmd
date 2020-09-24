@@ -8,9 +8,8 @@ categories:
 tags:
   - VBA
   - automation
-description: ''
 thumbnail: ''
-summary: 'Many organisations have evolved processes that require colleagues to email information to one another, or receive information by email from another organisation. In this case, you may want to automatically perform actions such as saving an email and its attachments to a folder when received if it meets certain criteria. Microsoft Outlook is ubiquituous in NHS organisations, and it is possible to automate Outlook processes using VBA.'
+description: 'Many organisations have evolved processes that require colleagues to email information to one another, or receive information by email from another organisation. In this case, you may want to automatically perform actions such as saving an email and its attachments to a folder when received if it meets certain criteria. Microsoft Outlook is ubiquituous in NHS organisations, and it is possible to automate Outlook processes using VBA.'
 ---
 
 Many organisations have evolved processes that require colleagues to email information to one another, or receive information by email from another organisation.^[This is rarely the right solution to the problem of moving data around an organisation. Using a webform or configuring an existing electronic record system is more reliable, easier to automate and likely to lead to better data quality than emailing Excel attachments. However, you may find organisational constraints mean you must work within the constraints of email.] In this case, you may want to automatically perform actions such as saving an email and its attachments to a folder when it's received if it meets certain criteria. Microsoft Outlook is ubiquituous in NHS organisations, and it's possible to automate Outlook processes using VBA.
@@ -94,6 +93,4 @@ Public Function ReplaceIllegalCharacters(strIn As String, strChar As String) As 
 
     ReplaceIllegalCharacters = strIn
 End Function
-
-
 ```
