@@ -1,0 +1,214 @@
+---
+title: Searching for a procedure or diagnosis code in any position
+author: James Gill
+date: '2020-10-04'
+slug: searching-for-a-procedure-or-diagnosis-code-in-any-position
+categories:
+  - SQL
+tags:
+  - Early career
+  - SQL
+  - T-SQL
+  - NHS Data Model
+summary: 'Searching for episodes coded with a particular diagnosis or procedure code is a bread-and-butter task for NHS information analysts.'
+output:
+  blogdown::html_page:
+    df_print: paged
+  
+---
+
+```{r connect, include=FALSE}
+library(odbc)
+
+conmssql <- dbConnect(odbc(),
+                 Driver   = "SQL Server",
+                 Server   = "DESKTOP-5R64MMS\\SQLEXPRESS",
+                 Database = "SynthNHS",
+                 Trusted_Connection = "True")
+```
+
+*All the data in this article is fake data generated artificially.*
+
+Searching for episodes coded with particular diagnosis or procedure codes (ICD or OPCS codes) is a bread-and-butter task for NHS information analysts. When the requestor is only interested in the primary diagnosis, or dominant procedure, the query is very straightforward: you can get everything you need from your episodes table.
+
+However, the situation becomes a little more complex when you need to find episodes where the code could be in any position. 
+
+In this case, it helps to have a table which contains one row per procedure code, that looks something like this:
+
+```{sql procexample, connection = conmssql, output.var = "procexamples", results = 'hide'}
+SELECT TOP 100 
+  EpisodeID, 
+  ProcedureNumber, 
+  ProcedureCode
+
+FROM [procedure]
+
+ORDER BY EpisodeID, ProcedureNumber
+
+```
+``` {r procexcampleprint, echo = FALSE, rows.print = 20}
+procexamples
+```
+
+Each EpisodeID is appears in multiple rows - one for each procedure coded as happening during the episode.
+
+If you join this table on to your episodes table, and use the `WHERE` clause, you might be OK in simple cases, but you risk duplication if the same procedure is coded more than once in the same episode. It's also not easy to see how to extend the query to search for episodes with a particular combination of codes.
+
+One alternative that I like is the `EXISTS` operator together with a correlated sub-query. An `EXISTS` condition is true if the sub-query that follows it returns some rows. In our case, we're going to check the procedures table with a sub-query to see if it contains the procedure code we're interested in for each row of the episode table. 
+
+If we're searching for an episode with a particular procedure code in any position, you can write something like this:
+
+```{sql procsearch, connection = conmssql, output.var = "procsearch", results = 'hide'}
+SELECT ipe.EpisodeID
+		,ipe.StartDate
+		,ipe.EndDate
+		
+FROM [episode] ipe
+
+WHERE EXISTS (SELECT 1
+				FROM [procedure] ipproc
+				WHERE ipproc.EpisodeID = ipe.EpisodeID
+				AND ipproc.ProcedureCode = 'L291')
+
+```
+``` {r procsearchprint, echo = FALSE, rows.print = 10}
+procsearch
+```
+
+One advantage of this approach is that you can be completely confident every row of your output represents a single episode. Another is that it is straightforward to amend the subquery or add extra subqueries to search for a combination of diagnosis and procedure codes.
+
+For example, to search for episodes with the procedure code L291 and the diagnosis code I501, you could write:
+
+```{sql procdiag, eval = FALSE}
+SELECT ipe.EpisodeID
+		,ipe.StartDate
+		,ipe.EndDate
+		
+FROM [episode] ipe
+
+WHERE	EXISTS (SELECT 1
+				FROM [procedure] ipproc
+				WHERE ipproc.EpisodeID = ipe.EpisodeID
+				AND ipproc.ProcedureCode = 'L291')
+	AND 
+		EXISTS (SELECT 1
+				FROM [diagnosis] ipdiag
+				WHERE ipdiag.EpisodeID = ipe.EpisodeID
+				AND ipdiag.DiagnosisCode = 'I501')
+```
+
+This also gives a rather neat way to search for two consecutive procedure codes. This is a rare ask, but it does come up occasionally in reference to approach codes.
+
+```{sql consecutive, eval = FALSE}
+SELECT ipe.EpisodeID
+		,ipe.StartDate
+		,ipe.EndDate
+		
+FROM [episode] ipe
+
+WHERE	EXISTS (SELECT 1
+				FROM [procedure] ipproc
+				LEFT JOIN [procedure] ipproc2
+				  ON ipproc.EpisodeID = ipproc2.EpisodeID
+				  AND ipproc.ProcedureNumber + 1 = 
+				    ipproc2.ProcedureNumber
+				WHERE ipproc.EpisodeID = ipe.EpisodeID
+				AND ipproc.ProcedureCode = 'L291'
+				AND ipproc2.ProcedureCode = 'Y081'
+				      )
+```
+
+Another alternative is to prepare a CTE with the EpisodeIDs you need. This can also be a helpful approach if you want to find multiple cohorts of patients at the same time, such as different arms of a national clinical audit. For example, you could write:
+
+```{sql cohort, eval = FALSE}
+WITH cohort AS (
+SELECT DISTINCT EpisodeID
+                ,'Cohort 1' AS 'CohortName'
+FROM [procedure] ipproc
+WHERE ipproc.ProcedureCode = 'L291'
+
+UNION ALL
+
+SELECT DISTINCT EpisodeID
+                ,'Cohort 2' AS 'CohortName'
+FROM [procedure] ipproc
+WHERE ipproc.ProcedureCode = 'L292'
+)
+
+SELECT ipe.EpisodeID
+		,cohort.CohortName
+		,ipe.StartDate
+		,ipe.EndDate
+
+FROM cohort
+LEFT JOIN episode ipe
+ON cohort.EpisodeID = ipe.EpisodeID
+
+```
+
+If you don't want to duplicate episodes which belong to more than one cohort in the output, you could use a series of CTEs, de-duplicate with a window function, or pivot the table on the cohort name column.
+
+### What not to do
+
+It's not uncommon for NHS data warehouses to contain a "wide" version of the episodes table, with a separate column for each diagnosis code. One good reason to have a table like this is that it is closer to the input format required by the Local Payment Grouper. It looks something like this:
+
+```{sql episodewide, connection = conmssql, output.var = "episodewide", results = 'hide'}
+SELECT TOP 100
+    ipewide.EpisodeID
+    ,ipewide.StartDate
+    ,ipewide.EndDate
+    ,[1], [2], [3], [4], [5]
+    ,[6], [7], [8], [9], [10]
+    ,[11], [12], [13], [14], [15]
+    ,[16], [17], [18], [19], [20]
+
+FROM episodewide ipewide
+```
+``` {r episodewideprint, echo = FALSE, rows.print = 10}
+episodewide
+```
+
+Don't be tempted to try and use this table to search for a procedure in any position. I've come across two anti-patterns that can arise using this kind of table.
+
+#### `WHERE` clause including every column
+
+```{sql anti1, eval = FALSE}
+/* Please don't do this! */
+
+SELECT ipe.EpisodeID
+
+FROM episode ipe
+
+WHERE ipe.[1] = 'L291'
+OR ipe.[2] = 'L291'
+OR ipe.[3] = 'L291'
+OR ipe.[4] = 'L291'
+-- ... etc etc
+OR ipe.[20] = 'L291'
+```
+
+The query is very long and verbose, even in simple cases. That makes it very awkward to read later. It's also irritating to make edits to the search criteria, and it's easy to introduce mistakes. It is not worth it.
+
+#### Concatenate all columns and use `LIKE`
+
+```{sql anti2, eval = FALSE}
+/* Please don't do this either */
+
+SELECT ipe.EpisodeID
+
+FROM episode ipe
+
+WHERE CONCAT([1], [2], [3], [4], [5], 
+              [6], [7], [8], [9], [10], 
+              [11], [12], [13], [14], [15], 
+              [16], [17], [18], [19], [20])
+  LIKE '%L291%'
+
+```
+
+Again this is a rather verbose query, and it will be rather slow. 
+
+### Final thoughts
+
+- Some people prefer using the `ANY` keyword instead of `EXISTS` - in many cases it's straightforward to rewrite the `ANY` version as `EXISTS` and vice versa.
+- Clinical coders are knowledgeable, hard-working and often under-appreciated. If a coder helps you out with an ad-hoc and you get some good feedback - think about sharing it with them!
