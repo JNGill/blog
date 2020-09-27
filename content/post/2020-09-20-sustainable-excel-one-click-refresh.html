@@ -15,7 +15,6 @@ thumbnail: ''
 summary: 'A pattern for creating sustainable routine reports in Excel.'
 ---
 
-<script src="/rmarkdown-libs/accessible-code-block/empty-anchor.js"></script>
 
 
 <p>Each of the NHS organisations I’ve worked in has used the same essential stack for creating day-to-day analyst products. That stack consists of writing SQL queries in SQL Server Management Studio to extract data from a data warehouse, and then placing that data into Excel to manipulate and present it. This is a common workflow both for ad-hoc and routine reports.</p>
@@ -27,25 +26,25 @@ summary: 'A pattern for creating sustainable routine reports in Excel.'
 <li>Write concise, simple SQL queries.
 <ul>
 <li>If you need to write significant business logic into the query, use a view or stored procedure, and place the statement that creates the view or stored procedure under version control. That way the business logic can be re-used without risking it getting out of sync with logic used in other reports.</li>
-<li>Make sure the SQL query has a sensible header.</li>
+<li>Make sure the SQL query has a sensible header. Briefly explain when and why the query was written, who wrote it, and what it was based on.</li>
 <li>Make a conscious decision about the granularity of your query. Will your end-users need record-level data, or can you reduce the size of the workbook and increase responsiveness by using a <code>GROUP BY</code>?</li>
 <li>If the data you need is not on your SQL Server, for example you receive it via email, creating a process to load it into the database is typically an investment that pays off. It’s rare that data is used for only a single report.</li>
 </ul></li>
 <li><a href="https://support.microsoft.com/en-us/office/connect-to-import-external-data-9967afd8-85ee-4df3-aa06-753bcc1a2724">Create a data connection in Excel</a>.
 <ul>
-<li>It is best to place the data in a table, rather than a PivotTable. This allows you the flexibility to add columns calculated using Excel formulas, for example to take advantage of Excel string formatting options. Using tables also allows you to use <a href="https://support.microsoft.com/en-us/office/using-structured-references-with-excel-tables-f5ed2452-2337-4f71-bed3-c8ae6d2b276e">structured references</a> in your formulas, which makes them respond as the data changes in size over time. You can also re-order the columns in the source data without pain.</li>
-<li>I usually uncheck the “enable background query” option, which ensures that PivotTables will refresh correctly when the data connection is refreshed.</li>
+<li>It is best to place the data in a table, rather than a PivotTable. This allows you the flexibility to add columns calculated using Excel formulas, for example to take advantage of Excel string formatting options. Using tables also allows you to use <a href="https://support.microsoft.com/en-us/office/using-structured-references-with-excel-tables-f5ed2452-2337-4f71-bed3-c8ae6d2b276e">structured references</a> in your formulas, which makes them respond as the data changes in size over time. You can also re-order the columns in the source data without breaking your formulas.</li>
+<li>Uncheck the “enable background query” option to ensure that PivotTables will refresh correctly when the data connection is refreshed.</li>
 <li><a href="https://support.microsoft.com/en-us/office/rename-an-excel-table-fbf49a4f-82a3-43eb-8ba2-44d21233b114">Giving the table a sensible name</a> both aids maintainability and also helps you to benefit from auto-completion in a workbook where you are working with more than one data-set.</li>
 </ul></li>
 <li>Create PivotTables from the table to perform your analysis.
 <ul>
 <li>PivotCharts have pros and cons. In some circumstances, you might find it’s preferable to use a regular Excel chart which is pointed to a <a href="https://peltiertech.com/Excel/Charts/DynamicColumnChart1.html">dynamic named range</a>.</li>
-<li>Even if the end-product is a listing (e.g. of appointments), I sometimes find it advantageous to use the PivotTable “Show in tabular form” option with subtotals and grand totals switched off. It’s easier to re-order columns.</li>
+<li>Even if the end-product is a listing (e.g. of appointments), I sometimes find it helps to use the PivotTable “Show in tabular form” option with subtotals and grand totals switched off. It’s easier to re-order columns.</li>
 </ul></li>
 <li>If you know this will be a routine report, document the report.
 <ul>
 <li>Use the standard documentation in your department.</li>
-<li>Make sure to include a brief explanation of why the report was created, and who originally requested it.</li>
+<li>Briefly explain why the report was created, and who originally requested it.</li>
 <li>If you do anything un-orthodox, such as creative use of macros, hidden columns, complex dynamic named ranges or non-standard business logic, give a brief explanation.</li>
 </ul></li>
 </ol>
@@ -55,6 +54,6 @@ summary: 'A pattern for creating sustainable routine reports in Excel.'
 <div class="footnotes">
 <hr />
 <ol>
-<li id="fn1"><p>Particularly Greg Curzon, Mark Geraghty and Marcus Yarwood.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn1"><p>Particularly Greg Curzon, Mark Geraghty and Marcus Yarwood.<a href="#fnref1" class="footnote-back">↩</a></p></li>
 </ol>
 </div>
