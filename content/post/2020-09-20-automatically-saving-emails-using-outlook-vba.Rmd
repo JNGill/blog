@@ -12,7 +12,7 @@ thumbnail: ''
 description: 'Many organisations have evolved processes that require colleagues to email information to one another, or receive information by email from another organisation. In this case, you may want to automatically perform actions such as saving an email and its attachments to a folder when received if it meets certain criteria. Microsoft Outlook is ubiquituous in NHS organisations, and it is possible to automate Outlook processes using VBA.'
 ---
 
-Many organisations have evolved processes that require colleagues to email information to one another, or receive information by email from another organisation.^[This is rarely the right solution to the problem of moving data around an organisation. Using a webform or configuring an existing electronic record system is more reliable, easier to automate and likely to lead to better data quality than emailing Excel attachments. However, you may find organisational constraints mean you must work within the constraints of email.] In this case, you may want to automatically perform actions such as saving an email and its attachments to a folder when it's received if it meets certain criteria. Microsoft Outlook is ubiquituous in NHS organisations, and it's possible to automate Outlook processes using VBA.
+Many organisations have evolved processes that involve sending and receiving information via email.^[This is rarely the right solution to the problem of moving data around an organisation. Using a webform or configuring an existing electronic record system is more reliable, easier to automate and likely to lead to better data quality than emailing Excel attachments. However, you may find organisational constraints mean you must work within the constraints of email.] It might save time to automatically perform actions such as saving an email and its attachments to a folder when it's received if it meets certain criteria. Microsoft Outlook is ubiquituous in the NHS, and it's possible to automate Outlook processes using VBA.
 
 The script below demonstrates one way of achieving this. In order to use this code:
 
@@ -24,14 +24,14 @@ The script below demonstrates one way of achieving this. In order to use this co
 6. Add logic to specify which kinds of emails should be saved, if desired (e.g. certain senders or subject lines).
 7. Save, close and re-open Outlook.
 
-Be aware that if you have multiple email accounts, you may need to amend the `Application_Startup` sub to pick the correct one. The process will only run when Outlook is open (it will fire for emails received while Outlook is closed when Outlook is next opened).
+If you have multiple email accounts, you may need to amend the `Application_Startup` sub to pick the correct one. The process will only run when Outlook is open (it will fire for emails received while Outlook is closed when Outlook is next opened).
 
-The following pages on Microsoft Docs are an excellent resource for learning more about event-driven automation in Outlook:
+To find out more about event-driven automation in Outlook, start here:
 
 - [Using Events with Automation](https://docs.microsoft.com/en-us/office/vba/outlook/concepts/electronic-business-cards/using-events-with-automation)
 - [Working with Outlook Events](https://docs.microsoft.com/en-us/office/vba/outlook/concepts/electronic-business-cards/working-with-outlook-events)
 
-The below code does not contain any error-handling. If you come to rely on a piece of VBA, developing error-handling is recommended.
+This code does not contain any error-handling. If you rely on a piece of VBA, it should have error-handling!
 
 ```{vb ThisOutlookSession, eval=FALSE}
 'Declare event-handler
