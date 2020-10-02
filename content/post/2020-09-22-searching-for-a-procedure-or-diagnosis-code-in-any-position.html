@@ -197,27 +197,27 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 <p>Don’t be tempted to try and use this table to search for a procedure in any position. I’ve come across two anti-patterns that can arise using this kind of table.</p>
 <div id="where-clause-including-every-column" class="section level4">
 <h4><code>WHERE</code> clause including every column</h4>
-<div class="sourceCode" id="cb7"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb7-1"><a href="#cb7-1"></a><span class="co">/* Please don&#39;t do this! */</span></span>
+<div class="sourceCode" id="cb7"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb7-1"><a href="#cb7-1"></a><span class="co">/* I don&#39;t recommend this. */</span></span>
 <span id="cb7-2"><a href="#cb7-2"></a></span>
-<span id="cb7-3"><a href="#cb7-3"></a><span class="kw">SELECT</span> ipe.EpisodeID</span>
+<span id="cb7-3"><a href="#cb7-3"></a><span class="kw">SELECT</span> ipewide.EpisodeID</span>
 <span id="cb7-4"><a href="#cb7-4"></a></span>
-<span id="cb7-5"><a href="#cb7-5"></a><span class="kw">FROM</span> episode ipe</span>
+<span id="cb7-5"><a href="#cb7-5"></a><span class="kw">FROM</span> episodewide ipewide</span>
 <span id="cb7-6"><a href="#cb7-6"></a></span>
-<span id="cb7-7"><a href="#cb7-7"></a><span class="kw">WHERE</span> ipe.[<span class="dv">1</span>] <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span>
-<span id="cb7-8"><a href="#cb7-8"></a><span class="kw">OR</span> ipe.[<span class="dv">2</span>] <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span>
-<span id="cb7-9"><a href="#cb7-9"></a><span class="kw">OR</span> ipe.[<span class="dv">3</span>] <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span>
-<span id="cb7-10"><a href="#cb7-10"></a><span class="kw">OR</span> ipe.[<span class="dv">4</span>] <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span>
+<span id="cb7-7"><a href="#cb7-7"></a><span class="kw">WHERE</span> ipewide.[<span class="dv">1</span>] <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span>
+<span id="cb7-8"><a href="#cb7-8"></a><span class="kw">OR</span> ipewide.[<span class="dv">2</span>] <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span>
+<span id="cb7-9"><a href="#cb7-9"></a><span class="kw">OR</span> ipewide.[<span class="dv">3</span>] <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span>
+<span id="cb7-10"><a href="#cb7-10"></a><span class="kw">OR</span> ipewide.[<span class="dv">4</span>] <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span>
 <span id="cb7-11"><a href="#cb7-11"></a><span class="co">-- ... etc etc</span></span>
-<span id="cb7-12"><a href="#cb7-12"></a><span class="kw">OR</span> ipe.[<span class="dv">20</span>] <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span></code></pre></div>
+<span id="cb7-12"><a href="#cb7-12"></a><span class="kw">OR</span> ipewide.[<span class="dv">20</span>] <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span></code></pre></div>
 <p>The query is very long and verbose, even in simple cases. That makes it very awkward to read later. It’s also irritating to make edits to the search criteria, and it’s easy to introduce mistakes. It is not worth it.</p>
 </div>
 <div id="concatenate-all-columns-and-use-like" class="section level4">
 <h4>Concatenate all columns and use <code>LIKE</code></h4>
-<div class="sourceCode" id="cb8"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb8-1"><a href="#cb8-1"></a><span class="co">/* Please don&#39;t do this either */</span></span>
+<div class="sourceCode" id="cb8"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb8-1"><a href="#cb8-1"></a><span class="co">/* I don&#39;t recommend this. */</span></span>
 <span id="cb8-2"><a href="#cb8-2"></a></span>
 <span id="cb8-3"><a href="#cb8-3"></a><span class="kw">SELECT</span> ipe.EpisodeID</span>
 <span id="cb8-4"><a href="#cb8-4"></a></span>
-<span id="cb8-5"><a href="#cb8-5"></a><span class="kw">FROM</span> episode ipe</span>
+<span id="cb8-5"><a href="#cb8-5"></a><span class="kw">FROM</span> episodewide ipewide</span>
 <span id="cb8-6"><a href="#cb8-6"></a></span>
 <span id="cb8-7"><a href="#cb8-7"></a><span class="kw">WHERE</span> <span class="fu">CONCAT</span>([<span class="dv">1</span>], [<span class="dv">2</span>], [<span class="dv">3</span>], [<span class="dv">4</span>], [<span class="dv">5</span>], </span>
 <span id="cb8-8"><a href="#cb8-8"></a>              [<span class="dv">6</span>], [<span class="dv">7</span>], [<span class="dv">8</span>], [<span class="dv">9</span>], [<span class="dv">10</span>], </span>

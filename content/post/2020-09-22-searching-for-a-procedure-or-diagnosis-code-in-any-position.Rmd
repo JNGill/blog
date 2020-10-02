@@ -173,18 +173,18 @@ Don't be tempted to try and use this table to search for a procedure in any posi
 #### `WHERE` clause including every column
 
 ```{sql anti1, eval = FALSE}
-/* Please don't do this! */
+/* I don't recommend this. */
 
-SELECT ipe.EpisodeID
+SELECT ipewide.EpisodeID
 
-FROM episode ipe
+FROM episodewide ipewide
 
-WHERE ipe.[1] = 'L291'
-OR ipe.[2] = 'L291'
-OR ipe.[3] = 'L291'
-OR ipe.[4] = 'L291'
+WHERE ipewide.[1] = 'L291'
+OR ipewide.[2] = 'L291'
+OR ipewide.[3] = 'L291'
+OR ipewide.[4] = 'L291'
 -- ... etc etc
-OR ipe.[20] = 'L291'
+OR ipewide.[20] = 'L291'
 ```
 
 The query is very long and verbose, even in simple cases. That makes it very awkward to read later. It's also irritating to make edits to the search criteria, and it's easy to introduce mistakes. It is not worth it.
@@ -192,11 +192,11 @@ The query is very long and verbose, even in simple cases. That makes it very awk
 #### Concatenate all columns and use `LIKE`
 
 ```{sql anti2, eval = FALSE}
-/* Please don't do this either */
+/* I don't recommend this. */
 
 SELECT ipe.EpisodeID
 
-FROM episode ipe
+FROM episodewide ipewide
 
 WHERE CONCAT([1], [2], [3], [4], [5], 
               [6], [7], [8], [9], [10], 

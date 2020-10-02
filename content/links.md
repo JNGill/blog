@@ -55,6 +55,8 @@ sidebar: false
 #### Statistics
 
 - [Andrew Gelman](https://statmodeling.stat.columbia.edu/)
+- [Rob Hyndman](https://robjhyndman.com/hyndsight/)
+- [Forecasting Principles](https://www.forecastingprinciples.com/)
 
 ## Software
 

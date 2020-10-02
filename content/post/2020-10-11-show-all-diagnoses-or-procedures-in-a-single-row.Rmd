@@ -1,0 +1,117 @@
+---
+title: Show all diagnoses or procedures in a single row
+author: James Gill
+date: '2020-10-11'
+slug: show-all-diagnoses-or-procedures-in-a-single-row
+categories:
+  - SQL
+tags:
+  - SQL Server
+  - T-SQL
+summary: 'Ways to summarise clinical coding information at episode level.'
+output:
+  blogdown::html_page:
+    df_print: paged
+---
+
+```{r connect, include=FALSE}
+library(odbc)
+
+conmssql <- dbConnect(odbc(),
+                 Driver   = "SQL Server",
+                 Server   = "DESKTOP-5R64MMS\\SQLEXPRESS",
+                 Database = "SynthNHS",
+                 Trusted_Connection = "True")
+```
+
+*All the data in this article is fake data generated artificially.*
+
+It's sometimes helpful to produce a listing of patients along with their full list of diagnoses or procedures. There are a few ways of going about this.
+
+### STRING_AGG
+
+Since SQL Server 2017, Microsoft have provided a function that gives us what we need with no fuss.
+
+```{sql stringagg, connection = conmssql}
+
+SELECT TOP 100 
+        ipe.EpisodeID
+        ,STRING_AGG(ipdiag.DiagnosisCode, '; ')
+        WITHIN GROUP (ORDER BY ipdiag.DiagnosisNumber)
+          AS 'Diagnoses'
+
+FROM [episode] ipe
+LEFT JOIN [diagnosis] ipdiag
+ON ipdiag.EpisodeID = ipe.EpisodeID
+
+GROUP BY ipe.EpisodeID
+```
+It's straightforward to finesse this:
+
+- to add code descriptions, left join to the lookup table
+- to put each code on a separate line within an Excel cell, replace `'; '` with `'; ' + CHAR(10)`.
+
+### STUFF FOR XML PATH
+
+If the compatibility level of your database is too low to take advantage of `STRING_AGG`, there is a hallowed trick to fall back on. I'm not sure who first came up with this, but I think I first saw it on Stack Overflow.
+
+```{sql forxmlpath, connection = conmssql}
+SELECT TOP 100 
+    ipe.EpisodeID 
+    ,STUFF(
+                 (SELECT '; ' + ipproc.ProcedureCode 
+				 FROM [procedure] ipproc 
+				 WHERE ipproc.EpisodeID = ipe.EpisodeID FOR XML PATH ('')), 1, 1, ''
+           ) AS 'Procedures'
+
+FROM episode ipe
+
+GROUP BY ipe.EpisodeID
+
+ORDER BY ipe.EpisodeID
+```
+
+If you want to understand exactly how this works, check out [this excellent Stack Overflow answer](https://stackoverflow.com/a/31212160). If I end up using a pattern like this in a query that I know others will have to use or maintain, I tend to leave a comment indicating what's going on.
+
+### A less palatable option
+
+I have seen attempts to achieve this effect using the following pattern:
+
+```{sql antipattern, connection = conmssql, eval = FALSE}
+/* I don't recommend this. */
+
+SELECT TOP 100 
+    ipe.EpisodeID
+    ,CONCAT(ipdiag1.DiagnosisCode + '; ',
+           ipdiag2.DiagnosisCode + '; ',
+           -- etc etc
+           ipdiag19.DiagnosisCode + '; ',
+           ipdiag20.DiagnosisCode)
+           AS 'Diagnoses'
+    
+FROM episode ipe
+LEFT JOIN diagnosis ipdiag1
+  ON ipdiag1.EpisodeID = ipe.EpisodeID
+  AND ipdiag1.DiagnosisNumber = 1
+LEFT JOIN diagnosis ipdiag2
+  ON ipdiag2.EpisodeID = ipe.EpisodeID
+  AND ipdiag2.DiagnosisNumber = 2
+LEFT JOIN diagnosis ipdiag3
+  ON ipdiag3.EpisodeID = ipe.EpisodeID
+  AND ipdiag3.DiagnosisNumber = 3
+LEFT JOIN diagnosis ipdiag4
+  ON ipdiag4.EpisodeID = ipe.EpisodeID
+  AND ipdiag4.DiagnosisNumber = 4
+  
+-- etc, etc
+
+LEFT JOIN diagnosis ipdiag19
+  ON ipdiag19.EpisodeID = ipe.EpisodeID
+  AND ipdiag19.DiagnosisNumber = 19
+LEFT JOIN diagnosis ipdiag20
+  ON ipdiag20.EpisodeID = ipe.EpisodeID
+  AND ipdiag20.DiagnosisNumber = 20
+
+```
+
+This approach leaves you with a very verbose query - it's pretty hard to debug a query when you can't see the wood for the trees. It also forces you to decide the maximum number of diagnoses you want to include for each episode.
