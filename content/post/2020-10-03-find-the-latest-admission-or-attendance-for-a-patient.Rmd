@@ -1,0 +1,85 @@
+---
+title: Find the latest admission or attendance for a patient
+author: James Gill
+date: '2020-10-25'
+slug: find-the-latest-admission-or-attendance-for-a-patient
+categories:
+  - SQL
+tags:
+  - T-SQL
+  - SQL
+summary: 'A method to find the most recent activity for a patient.'
+output:
+  blogdown::html_page:
+    df_print: paged
+    
+---
+
+```{r connect, include=FALSE}
+library(odbc)
+
+conmssql <- dbConnect(odbc(),
+                 Driver   = "SQL Server",
+                 Server   = "DESKTOP-5R64MMS\\SQLEXPRESS",
+                 Database = "SynthNHS",
+                 Trusted_Connection = "True")
+```
+
+*All the data in this article is fake data generated artificially.*
+
+Here are two ways to find only the most recent activity for a patient. The examples are based on inpatient discharges, but these can easily be adapted for outpatient attendances or other activity with timestamps.
+
+The following table shows a made-up patient with a series of inpatient admissions
+
+```{sql patient, connection = conmssql, echo = FALSE}
+SELECT ips.LocalPatientIdentifier
+        ,ips.HospitalProviderSpellNumber
+        ,ips.DischargeDate
+        
+FROM spell ips
+
+WHERE ips.LocalPatientIdentifier = 2
+
+ORDER BY ips.AdmissionDate ASC
+
+```
+
+### Method 1: Self-join
+
+In the query below, I've joined the spell table back onto itself, with the condition that the joined record must have a later discharge date. For the patient's most recent discharge, there is no other spell in the table with a later discharge date. Therefore the latest discharge will be the only record for which the join fails, and therefore the only record for which  `ips2.HospitalProviderSpellNumber` is null.
+
+```{sql selfjoin, connection = conmssql}
+SELECT ips.LocalPatientIdentifier
+        ,ips.HospitalProviderSpellNumber
+        ,ips.DischargeDate
+
+FROM spell ips
+LEFT JOIN spell ips2
+  ON ips.LocalPatientIdentifier = ips2.LocalPatientIdentifier
+  AND ips.DischargeDate < ips2.DischargeDate
+
+WHERE ips2.HospitalProviderSpellNumber IS NULL
+AND ips.LocalPatientIdentifier = 2
+```
+This method can be used to look for the earliest spell by exchanging the less than for a greater than in the join condition. Be careful of the situation in which you may have activity taking place on exactly the same date. In this case, you might want to include the time of the activity in the join too. 
+
+### Method 2: Correlated subquery
+
+In this approach, we instead write a correlated sub-query to search for the latest spell date for each patient.
+
+```{sql correlated, connection = conmssql}
+
+SELECT ips.LocalPatientIdentifier
+        ,ips.HospitalProviderSpellNumber
+        ,ips.DischargeDate
+
+FROM spell ips
+
+WHERE ips.DischargeDate = (SELECT MAX(ips2.DischargeDate)
+                          FROM spell ips2
+                          WHERE ips2.LocalPatientIdentifier = ips.LocalPatientIdentifier)
+AND ips.LocalPatientIdentifier = 2
+
+```
+
+Arguably this is a more readable query. Again, this can be used to look for the earliest spell, by switching the `MAX' to `MIN`, and again, you need to be careful about the situation in which two spells have exactly the same discharge date.

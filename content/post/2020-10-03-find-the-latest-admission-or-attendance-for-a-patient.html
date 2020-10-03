@@ -1,0 +1,199 @@
+---
+title: Find the latest admission or attendance for a patient
+author: James Gill
+date: '2020-10-25'
+slug: find-the-latest-admission-or-attendance-for-a-patient
+categories:
+  - SQL
+tags:
+  - T-SQL
+  - SQL
+summary: 'A method to find the most recent activity for a patient.'
+output:
+  blogdown::html_page:
+    df_print: paged
+    
+---
+
+<script src="/rmarkdown-libs/accessible-code-block/empty-anchor.js"></script>
+<link href="/rmarkdown-libs/pagedtable/css/pagedtable.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/pagedtable/js/pagedtable.js"></script>
+<style type="text/css">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; } /* Alert */
+code span.an { color: #008000; } /* Annotation */
+code span.at { } /* Attribute */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #0000ff; } /* ControlFlow */
+code span.ch { color: #008080; } /* Char */
+code span.cn { } /* Constant */
+code span.co { color: #008000; } /* Comment */
+code span.cv { color: #008000; } /* CommentVar */
+code span.do { color: #008000; } /* Documentation */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.im { } /* Import */
+code span.in { color: #008000; } /* Information */
+code span.kw { color: #0000ff; } /* Keyword */
+code span.op { } /* Operator */
+code span.ot { color: #ff4000; } /* Other */
+code span.pp { color: #ff4000; } /* Preprocessor */
+code span.sc { color: #008080; } /* SpecialChar */
+code span.ss { color: #008080; } /* SpecialString */
+code span.st { color: #008080; } /* String */
+code span.va { } /* Variable */
+code span.vs { color: #008080; } /* VerbatimString */
+code span.wa { color: #008000; font-weight: bold; } /* Warning */
+</style>
+
+
+<p><em>All the data in this article is fake data generated artificially.</em></p>
+<p>Here are two ways to find only the most recent activity for a patient. The examples are based on inpatient discharges, but these can easily be adapted for outpatient attendances or other activity with timestamps.</p>
+<p>The following table shows a made-up patient with a series of inpatient admissions</p>
+<div class="knitsql-table">
+<table>
+<caption><span id="tab:patient">Table 1: </span>6 records</caption>
+<thead>
+<tr class="header">
+<th align="left">LocalPatientIdentifier</th>
+<th align="right">HospitalProviderSpellNumber</th>
+<th align="left">DischargeDate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">2</td>
+<td align="right">1206</td>
+<td align="left">2019-10-03</td>
+</tr>
+<tr class="even">
+<td align="left">2</td>
+<td align="right">1005</td>
+<td align="left">2019-10-08</td>
+</tr>
+<tr class="odd">
+<td align="left">2</td>
+<td align="right">804</td>
+<td align="left">2019-10-20</td>
+</tr>
+<tr class="even">
+<td align="left">2</td>
+<td align="right">603</td>
+<td align="left">2020-03-11</td>
+</tr>
+<tr class="odd">
+<td align="left">2</td>
+<td align="right">402</td>
+<td align="left">2020-05-20</td>
+</tr>
+<tr class="even">
+<td align="left">2</td>
+<td align="right">201</td>
+<td align="left">2020-09-01</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="method-1-self-join" class="section level3">
+<h3>Method 1: Self-join</h3>
+<p>In the query below, I’ve joined the spell table back onto itself, with the condition that the joined record must have a later discharge date. For the patient’s most recent discharge, there is no other spell in the table with a later discharge date. Therefore the latest discharge will be the only record for which the join fails, and therefore the only record for which <code>ips2.HospitalProviderSpellNumber</code> is null.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">SELECT</span> ips.LocalPatientIdentifier</span>
+<span id="cb1-2"><a href="#cb1-2"></a>        ,ips.HospitalProviderSpellNumber</span>
+<span id="cb1-3"><a href="#cb1-3"></a>        ,ips.DischargeDate</span>
+<span id="cb1-4"><a href="#cb1-4"></a></span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="kw">FROM</span> spell ips</span>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> spell ips2</span>
+<span id="cb1-7"><a href="#cb1-7"></a>  <span class="kw">ON</span> ips.LocalPatientIdentifier <span class="op">=</span> ips2.LocalPatientIdentifier</span>
+<span id="cb1-8"><a href="#cb1-8"></a>  <span class="kw">AND</span> ips.DischargeDate <span class="op">&lt;</span> ips2.DischargeDate</span>
+<span id="cb1-9"><a href="#cb1-9"></a></span>
+<span id="cb1-10"><a href="#cb1-10"></a><span class="kw">WHERE</span> ips2.HospitalProviderSpellNumber <span class="kw">IS</span> <span class="kw">NULL</span></span>
+<span id="cb1-11"><a href="#cb1-11"></a><span class="kw">AND</span> ips.LocalPatientIdentifier <span class="op">=</span> <span class="dv">2</span></span></code></pre></div>
+<div class="knitsql-table">
+<table>
+<caption><span id="tab:selfjoin">Table 2: </span>1 records</caption>
+<thead>
+<tr class="header">
+<th align="left">LocalPatientIdentifier</th>
+<th align="right">HospitalProviderSpellNumber</th>
+<th align="left">DischargeDate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">2</td>
+<td align="right">201</td>
+<td align="left">2020-09-01</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>This method can be used to look for the earliest spell by exchanging the less than for a greater than in the join condition. Be careful of the situation in which you may have activity taking place on exactly the same date. In this case, you might want to include the time of the activity in the join too.</p>
+</div>
+<div id="method-2-correlated-subquery" class="section level3">
+<h3>Method 2: Correlated subquery</h3>
+<p>In this approach, we instead write a correlated sub-query to search for the latest spell date for each patient.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1"></a></span>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="kw">SELECT</span> ips.LocalPatientIdentifier</span>
+<span id="cb2-3"><a href="#cb2-3"></a>        ,ips.HospitalProviderSpellNumber</span>
+<span id="cb2-4"><a href="#cb2-4"></a>        ,ips.DischargeDate</span>
+<span id="cb2-5"><a href="#cb2-5"></a></span>
+<span id="cb2-6"><a href="#cb2-6"></a><span class="kw">FROM</span> spell ips</span>
+<span id="cb2-7"><a href="#cb2-7"></a></span>
+<span id="cb2-8"><a href="#cb2-8"></a><span class="kw">WHERE</span> ips.DischargeDate <span class="op">=</span> (<span class="kw">SELECT</span> <span class="fu">MAX</span>(ips2.DischargeDate)</span>
+<span id="cb2-9"><a href="#cb2-9"></a>                          <span class="kw">FROM</span> spell ips2</span>
+<span id="cb2-10"><a href="#cb2-10"></a>                          <span class="kw">WHERE</span> ips2.LocalPatientIdentifier <span class="op">=</span> ips.LocalPatientIdentifier)</span>
+<span id="cb2-11"><a href="#cb2-11"></a><span class="kw">AND</span> ips.LocalPatientIdentifier <span class="op">=</span> <span class="dv">2</span></span></code></pre></div>
+<div class="knitsql-table">
+<table>
+<caption><span id="tab:correlated">Table 3: </span>1 records</caption>
+<thead>
+<tr class="header">
+<th align="left">LocalPatientIdentifier</th>
+<th align="right">HospitalProviderSpellNumber</th>
+<th align="left">DischargeDate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">2</td>
+<td align="right">201</td>
+<td align="left">2020-09-01</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Arguably this is a more readable query. Again, this can be used to look for the earliest spell, by switching the <code>MAX' to</code>MIN`, and again, you need to be careful about the situation in which two spells have exactly the same discharge date.</p>
+</div>
