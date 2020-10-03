@@ -1,0 +1,30 @@
+---
+title: What makes a good listing?
+author: James Gill
+date: '2020-10-18'
+slug: what-makes-a-good-listing
+categories:
+  - Excel
+tags:
+  - Early career
+  - Excel
+summary: 'Producing a listing of activity sounds simple. But the way you format the listing makes the difference between a happy customer and an unhappy one.'
+
+---
+
+<script src="/rmarkdown-libs/accessible-code-block/empty-anchor.js"></script>
+
+
+<p>Producing a listing of patient activity is one of the most common ad-hoc requests hospital analysts receive. On the face of it, it’s a simple thing to do - write a SELECT, put the output in Excel, and the job’s a good-un.</p>
+<p>That being said, the colleague who requested the listing may well be planning to spend a lot of time working with the output. Perhaps they need to resolve a data quality issue for every patient on the listing, or conduct a clinical audit on every piece of activity. So it’s worth taking the time to think about what makes a good listing.</p>
+<p>Here are my thoughts:</p>
+<ol style="list-style-type: decimal">
+<li><strong>Understand precisely what activity needs to be included.</strong> It’s not always obvious how to transform the request you receive into a precise SQL clause. If in doubt, verify the specific filters needed with the requestor.</li>
+<li><strong>Only include fields which are relevant to the request.</strong> Side-scrolling through dozens of columns is not a good experience.</li>
+<li>If the user will be looking up each record in a front-end system to perform an action, <strong>give them the identifiers they will need to use in the first columns of the listing.</strong> Avoid including any database identifiers which are not shown in front-end systems. If they have to be included, place them on the far right of the listing.</li>
+<li><strong>Make field names human-readable</strong>. Prefer “Appointment Date” to “Att_Dt”. If the user might be unfamiliar with the standard definitions for metrics like length of stay, clarify them in the field name, for example “Length of Stay (midnights)”.</li>
+<li><strong>Format dates and times appropriately.</strong> Does the time matter, or is it just noise? Will the user need to filter for particular weeks or months?</li>
+<li><strong>Order the listing appropriately for its intended use.</strong> It often makes sense to order the listing by the date or location of the activity, or by the team that carried it out.</li>
+<li><strong>Group related fields together.</strong> In particular, put fields that the user might want to compare next to each other.</li>
+<li><strong>Document the listing.</strong> Include an explanation of what activity is included in the listing, and why.</li>
+</ol>
