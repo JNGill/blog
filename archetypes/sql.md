@@ -8,7 +8,7 @@ output:
     
 ---
 
-```{r connect, include=FALSE}
+```{r setup, include=FALSE}
 library(odbc)
 
 conmssql <- dbConnect(odbc(),
@@ -16,12 +16,17 @@ conmssql <- dbConnect(odbc(),
                  Server   = "DESKTOP-5R64MMS\\SQLEXPRESS",
                  Database = "SynthNHS",
                  Trusted_Connection = "True")
+                 
+knitr::opts_chunk$set(connection = "conmssql")                 
 ```
 
 
-```{sql, connection = conmssql}
-SELECT TOP 10 *
+```{sql example, output.var = "exampletbl", results = 'hide'}
+SELECT TOP 100 *
         
 FROM spell ips
 
+```
+``` {r exampleprint, echo = FALSE, rows.print = 20}
+exampletbl
 ```
