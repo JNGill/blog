@@ -29,12 +29,12 @@ conmssql <- dbConnect(odbc(),
 
 Here are two ways to find only the most recent activity for a patient. The examples are based on inpatient discharges, but these can easily be adapted for outpatient attendances or other activity with timestamps.
 
-The following table shows a made-up patient with a series of inpatient admissions
+The following table shows a made-up patient with six inpatient admissions. Our goal is to write a query which returns only the most recent admission, in this case with spell number 201.
 
 ```{sql patient, connection = conmssql, echo = FALSE}
-SELECT ips.LocalPatientIdentifier
-        ,ips.HospitalProviderSpellNumber
-        ,ips.DischargeDate
+SELECT ips.LocalPatientIdentifier AS 'PatientID'
+        ,ips.HospitalProviderSpellNumber AS 'Spell Number'
+        ,ips.DischargeDate AS 'Discharge Date'
         
 FROM spell ips
 
@@ -46,9 +46,30 @@ ORDER BY ips.AdmissionDate ASC
 
 ### Method 1: Self-join
 
-In the query below, I've joined the spell table back onto itself, with the condition that the joined record must have a later discharge date. For the patient's most recent discharge, there is no other spell in the table with a later discharge date. Therefore the latest discharge will be the only record for which the join fails, and therefore the only record for which  `ips2.HospitalProviderSpellNumber` is null.
+In the query below, I've joined the spell table back onto itself, with the condition that the joined record must have a later discharge date. This creates an output where there is a row for every combination of a spell with a later spell for that same patient.
 
-```{sql selfjoin, connection = conmssql}
+```{sql selfjoin, connection = conmssql, max.print = 20}
+SELECT ips.LocalPatientIdentifier AS 'PatientID'
+        ,ips.HospitalProviderSpellNumber AS 'Spell Number'
+        ,ips.DischargeDate AS 'Discharge Date'
+        ,ips2.HospitalProviderSpellNumber AS 'Spell Number 2'
+        ,ips2.DischargeDate AS 'Discharge Date 2'
+
+FROM spell ips
+LEFT JOIN spell ips2
+  ON ips.LocalPatientIdentifier = ips2.LocalPatientIdentifier
+  AND ips.DischargeDate < ips2.DischargeDate
+
+WHERE ips.LocalPatientIdentifier = 2
+
+ORDER BY ips.DischargeDate
+          ,ips2.HospitalProviderSpellNumber
+```
+
+
+In the table above, we see that the most recent spell, with spell number 201, is the only one for which `ips2.HospitalProviderSpellNumber` is null. This is because it is the only spell for which there is no spell with a greater discharge date in the spells table. Therefore we can filter on `ips2.HospitalProviderSpellNumber` to return only the most recent discharge.
+
+```{sql selfjoin2, connection = conmssql}
 SELECT ips.LocalPatientIdentifier
         ,ips.HospitalProviderSpellNumber
         ,ips.DischargeDate
@@ -58,8 +79,8 @@ LEFT JOIN spell ips2
   ON ips.LocalPatientIdentifier = ips2.LocalPatientIdentifier
   AND ips.DischargeDate < ips2.DischargeDate
 
-WHERE ips2.HospitalProviderSpellNumber IS NULL
-AND ips.LocalPatientIdentifier = 2
+WHERE ips.LocalPatientIdentifier = 2
+AND ips2.HospitalProviderSpellNumber IS NULL
 ```
 This method can be used to look for the earliest spell by exchanging the less than for a greater than in the join condition. Be careful of the situation in which you may have activity taking place on exactly the same date. In this case, you might want to include the time of the activity in the join too. 
 
