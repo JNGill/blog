@@ -45,4 +45,5 @@ ignoreFiles = ["\\.Rmd$", "\\.Rmarkdown$", "_files$", "_cache$"]
 [Params.widgets.social]
   linkedin = "jamesngill"
   github = "JNGill"
-  #email = "james@jamesngill.net" # When this is configured
+  email = "james@jamesngill.net"
+  twitter = "jamesngill2"
