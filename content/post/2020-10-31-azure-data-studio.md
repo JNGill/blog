@@ -16,7 +16,7 @@ All the while I've worked in the NHS, I've used SQL Server Management Studio (SS
 
 From time-to-time I've experimented with writing my SQL in RStudio when working on R projects. It's nice to have everything in one place. But I always missed the code highlighting and completion, and the ability to view object definitions too much to stick with it.
 
-Lately though I've left SSMS for a different Microsoft product, Azure Data Studio (ADS). Despite its name, ADS isn't just a tool for managing Azure cloud databases. In fact the user experience for an analyst is similar to working in SSMS. 
+Lately though I've left SSMS for a different Microsoft product, Azure Data Studio (ADS). Despite its name, ADS isn't just a tool for managing Azure cloud databases. The user experience for an analyst is similar to working with an on-premises database in SSMS. 
 
 [Microsoft says](https://docs.microsoft.com/en-us/sql/azure-data-studio/what-is?view=sql-server-ver15) to use ADS if you "spend most of your time editing or executing queries", while you should prefer SSMS if you "spend most of your time on database administration tasks". The former certainly describes my workload better than the latter, so I gave it a try. 
 
