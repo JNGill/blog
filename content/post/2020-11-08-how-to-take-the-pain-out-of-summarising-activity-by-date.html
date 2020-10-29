@@ -1,0 +1,370 @@
+---
+title: How to take the pain out of summarising activity by date
+author: James Gill
+date: '2020-11-08'
+slug: how-to-take-the-pain-out-of-summarising-activity-by-date
+categories:
+  - SQL
+tags:
+  - Early career
+  - SQL
+  - T-SQL
+  - Excel
+summary: 'Use a calendar table!'
+output:
+  blogdown::html_page:
+    df_print: paged
+---
+
+<script src="/rmarkdown-libs/accessible-code-block/empty-anchor.js"></script>
+<link href="/rmarkdown-libs/pagedtable/css/pagedtable.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/pagedtable/js/pagedtable.js"></script>
+<style type="text/css">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; } /* Alert */
+code span.an { color: #008000; } /* Annotation */
+code span.at { } /* Attribute */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #0000ff; } /* ControlFlow */
+code span.ch { color: #008080; } /* Char */
+code span.cn { } /* Constant */
+code span.co { color: #008000; } /* Comment */
+code span.cv { color: #008000; } /* CommentVar */
+code span.do { color: #008000; } /* Documentation */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.im { } /* Import */
+code span.in { color: #008000; } /* Information */
+code span.kw { color: #0000ff; } /* Keyword */
+code span.op { } /* Operator */
+code span.ot { color: #ff4000; } /* Other */
+code span.pp { color: #ff4000; } /* Preprocessor */
+code span.sc { color: #008080; } /* SpecialChar */
+code span.ss { color: #008080; } /* SpecialString */
+code span.st { color: #008080; } /* String */
+code span.va { } /* Variable */
+code span.vs { color: #008080; } /* VerbatimString */
+code span.wa { color: #008000; font-weight: bold; } /* Warning */
+</style>
+
+
+<p><em>All data in this article is fake data, generated artificially.</em></p>
+<p>I work with time series most weeks. Modern electronic patient records (EPRs) record precise timestamps for many actions. But most often, I need to aggregate the figures in some way. There are rather a lot of different possible aggregations:</p>
+<ul>
+<li>By calendar or financial year;</li>
+<li>By calendar or financial month;</li>
+<li>By week beginning or week ending (by the way - which day of the week is the start of the week?);</li>
+<li>By day of the week;</li>
+<li>By whether the day is a working day or a weekend or bank holiday;</li>
+<li>etc etc.</li>
+</ul>
+<p>So the question is, how do we convert the timestamp from the EPR into a field containing the week or months that the timestamp fell into?</p>
+<p>Many of the StackOverflow solutions to this kind of problem involve writing pretty baroque SQL combining a variety of date functions (<a href="https://stackoverflow.com/questions/7168874/get-first-day-of-week-in-sql-server">Example 1</a>, <a href="https://stackoverflow.com/questions/1520789/how-can-i-select-the-first-day-of-a-month-in-sql">Example 2</a>, <a href="https://stackoverflow.com/questions/6744367/most-efficient-way-to-calculate-the-first-day-of-the-current-financial-year">Example 3</a>).</p>
+<p>I tend to hesitate about using these kinds of snippets. I have to think hard to convince myself the code will work for any given date. Including obscure snippets creates an extra hurdle for the next analyst who has to read the code. The functions could be pretty slow, especially if you’re dealing with large tables like outpatients. And what’s the guarantee that a colleague would pick Monday as the start of the week rather than Sunday?</p>
+<p>So instead, I tend to use a calendar table (also sometimes called a date dimension table). This is a table which contains one row for each calendar date. It might look something like this:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">SELECT</span> TOP <span class="dv">100</span> <span class="op">*</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a>        </span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="kw">FROM</span> lkp_calendar</span></code></pre></div>
+<div class="knitsql-table">
+<table>
+<caption><span id="tab:calendartable">Table 1: </span>Displaying records 1 - 10</caption>
+<thead>
+<tr class="header">
+<th align="left">Date</th>
+<th align="left">Financial.Year</th>
+<th align="left">Month</th>
+<th align="left">Week.Beginning</th>
+<th align="left">Week.Ending</th>
+<th align="left">Day.of.Week</th>
+<th align="right">Working.Day</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">2018-01-01</td>
+<td align="left">2017/18</td>
+<td align="left">2018-01-01</td>
+<td align="left">01/01/2018</td>
+<td align="left">07/01/2018</td>
+<td align="left">Mon</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">2018-01-02</td>
+<td align="left">2017/18</td>
+<td align="left">2018-01-01</td>
+<td align="left">01/01/2018</td>
+<td align="left">07/01/2018</td>
+<td align="left">Tue</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">2018-01-03</td>
+<td align="left">2017/18</td>
+<td align="left">2018-01-01</td>
+<td align="left">01/01/2018</td>
+<td align="left">07/01/2018</td>
+<td align="left">Wed</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">2018-01-04</td>
+<td align="left">2017/18</td>
+<td align="left">2018-01-01</td>
+<td align="left">01/01/2018</td>
+<td align="left">07/01/2018</td>
+<td align="left">Thu</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">2018-01-05</td>
+<td align="left">2017/18</td>
+<td align="left">2018-01-01</td>
+<td align="left">01/01/2018</td>
+<td align="left">07/01/2018</td>
+<td align="left">Fri</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">2018-01-06</td>
+<td align="left">2017/18</td>
+<td align="left">2018-01-01</td>
+<td align="left">01/01/2018</td>
+<td align="left">07/01/2018</td>
+<td align="left">Sat</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">2018-01-07</td>
+<td align="left">2017/18</td>
+<td align="left">2018-01-01</td>
+<td align="left">01/01/2018</td>
+<td align="left">07/01/2018</td>
+<td align="left">Sun</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">2018-01-08</td>
+<td align="left">2017/18</td>
+<td align="left">2018-01-01</td>
+<td align="left">08/01/2018</td>
+<td align="left">14/01/2018</td>
+<td align="left">Mon</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">2018-01-09</td>
+<td align="left">2017/18</td>
+<td align="left">2018-01-01</td>
+<td align="left">08/01/2018</td>
+<td align="left">14/01/2018</td>
+<td align="left">Tue</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">2018-01-10</td>
+<td align="left">2017/18</td>
+<td align="left">2018-01-01</td>
+<td align="left">08/01/2018</td>
+<td align="left">14/01/2018</td>
+<td align="left">Wed</td>
+<td align="right">1</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>In real life, you tend to find a bunch more fields - but I’ve limited it to a few examples.</p>
+<p>Summarising figures by date then becomes as easy as a <code>LEFT JOIN</code>:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">SELECT</span> dy.[Financial.<span class="dt">Year</span>]</span>
+<span id="cb2-2"><a href="#cb2-2"></a>        ,dy.[<span class="dt">Month</span>]</span>
+<span id="cb2-3"><a href="#cb2-3"></a>        ,<span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> <span class="st">&#39;Finished Consultant Episodes&#39;</span></span>
+<span id="cb2-4"><a href="#cb2-4"></a>        </span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="kw">FROM</span> [episode] ipe</span>
+<span id="cb2-6"><a href="#cb2-6"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> lkp_calendar dy</span>
+<span id="cb2-7"><a href="#cb2-7"></a>  <span class="kw">ON</span> ipe.[EndDate] <span class="op">=</span> dy.[<span class="dt">Date</span>]</span>
+<span id="cb2-8"><a href="#cb2-8"></a></span>
+<span id="cb2-9"><a href="#cb2-9"></a><span class="kw">GROUP</span> <span class="kw">BY</span> dy.[Financial.<span class="dt">Year</span>]</span>
+<span id="cb2-10"><a href="#cb2-10"></a>        ,dy.[<span class="dt">Month</span>]</span>
+<span id="cb2-11"><a href="#cb2-11"></a></span>
+<span id="cb2-12"><a href="#cb2-12"></a><span class="kw">ORDER</span> <span class="kw">BY</span> dy.[Financial.<span class="dt">Year</span>]</span>
+<span id="cb2-13"><a href="#cb2-13"></a>        ,dy.[<span class="dt">Month</span>]</span></code></pre></div>
+<div class="knitsql-table">
+<table>
+<caption><span id="tab:ep">Table 2: </span>Displaying records 1 - 10</caption>
+<thead>
+<tr class="header">
+<th align="left">Financial.Year</th>
+<th align="left">Month</th>
+<th align="right">Finished Consultant Episodes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">2019/20</td>
+<td align="left">2019-01-09</td>
+<td align="right">286</td>
+</tr>
+<tr class="even">
+<td align="left">2019/20</td>
+<td align="left">2019-01-10</td>
+<td align="right">2077</td>
+</tr>
+<tr class="odd">
+<td align="left">2019/20</td>
+<td align="left">2019-01-11</td>
+<td align="right">1993</td>
+</tr>
+<tr class="even">
+<td align="left">2019/20</td>
+<td align="left">2019-01-12</td>
+<td align="right">2153</td>
+</tr>
+<tr class="odd">
+<td align="left">2019/20</td>
+<td align="left">2020-01-01</td>
+<td align="right">2075</td>
+</tr>
+<tr class="even">
+<td align="left">2019/20</td>
+<td align="left">2020-01-02</td>
+<td align="right">1978</td>
+</tr>
+<tr class="odd">
+<td align="left">2019/20</td>
+<td align="left">2020-01-03</td>
+<td align="right">2045</td>
+</tr>
+<tr class="even">
+<td align="left">2020/21</td>
+<td align="left">2020-01-04</td>
+<td align="right">2055</td>
+</tr>
+<tr class="odd">
+<td align="left">2020/21</td>
+<td align="left">2020-01-05</td>
+<td align="right">2146</td>
+</tr>
+<tr class="even">
+<td align="left">2020/21</td>
+<td align="left">2020-01-06</td>
+<td align="right">2094</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>It’s also very easy to take a look at activity that takes place at the weekend or bank holidays (without having to remember when the latter are):</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">SELECT</span> dy.[Financial.<span class="dt">Year</span>]</span>
+<span id="cb3-2"><a href="#cb3-2"></a>        ,dy.[<span class="dt">Month</span>]</span>
+<span id="cb3-3"><a href="#cb3-3"></a>        ,<span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> <span class="st">&#39;Finished Consultant Episodes&#39;</span></span>
+<span id="cb3-4"><a href="#cb3-4"></a>        </span>
+<span id="cb3-5"><a href="#cb3-5"></a><span class="kw">FROM</span> [episode] ipe</span>
+<span id="cb3-6"><a href="#cb3-6"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> lkp_calendar dy</span>
+<span id="cb3-7"><a href="#cb3-7"></a>  <span class="kw">ON</span> ipe.[EndDate] <span class="op">=</span> dy.[<span class="dt">Date</span>]</span>
+<span id="cb3-8"><a href="#cb3-8"></a></span>
+<span id="cb3-9"><a href="#cb3-9"></a><span class="kw">WHERE</span> dy.[Working.<span class="dt">Day</span>] <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb3-10"><a href="#cb3-10"></a></span>
+<span id="cb3-11"><a href="#cb3-11"></a><span class="kw">GROUP</span> <span class="kw">BY</span> dy.[Financial.<span class="dt">Year</span>]</span>
+<span id="cb3-12"><a href="#cb3-12"></a>        ,dy.[<span class="dt">Month</span>]</span>
+<span id="cb3-13"><a href="#cb3-13"></a></span>
+<span id="cb3-14"><a href="#cb3-14"></a><span class="kw">ORDER</span> <span class="kw">BY</span> dy.[Financial.<span class="dt">Year</span>]</span>
+<span id="cb3-15"><a href="#cb3-15"></a>        ,dy.[<span class="dt">Month</span>]</span></code></pre></div>
+<div class="knitsql-table">
+<table>
+<caption><span id="tab:epworking">Table 3: </span>Displaying records 1 - 10</caption>
+<thead>
+<tr class="header">
+<th align="left">Financial.Year</th>
+<th align="left">Month</th>
+<th align="right">Finished Consultant Episodes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">2019/20</td>
+<td align="left">2019-01-09</td>
+<td align="right">103</td>
+</tr>
+<tr class="even">
+<td align="left">2019/20</td>
+<td align="left">2019-01-10</td>
+<td align="right">533</td>
+</tr>
+<tr class="odd">
+<td align="left">2019/20</td>
+<td align="left">2019-01-11</td>
+<td align="right">578</td>
+</tr>
+<tr class="even">
+<td align="left">2019/20</td>
+<td align="left">2019-01-12</td>
+<td align="right">759</td>
+</tr>
+<tr class="odd">
+<td align="left">2019/20</td>
+<td align="left">2020-01-01</td>
+<td align="right">633</td>
+</tr>
+<tr class="even">
+<td align="left">2019/20</td>
+<td align="left">2020-01-02</td>
+<td align="right">625</td>
+</tr>
+<tr class="odd">
+<td align="left">2019/20</td>
+<td align="left">2020-01-03</td>
+<td align="right">560</td>
+</tr>
+<tr class="even">
+<td align="left">2020/21</td>
+<td align="left">2020-01-04</td>
+<td align="right">691</td>
+</tr>
+<tr class="odd">
+<td align="left">2020/21</td>
+<td align="left">2020-01-05</td>
+<td align="right">872</td>
+</tr>
+<tr class="even">
+<td align="left">2020/21</td>
+<td align="left">2020-01-06</td>
+<td align="right">572</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>As an aside, it is worth being careful about the “index date” in the join to the calendar table. In the above query, that’s <code>ipe.[EndDate]</code>, so my summary figures represent episodes which ended within each time period. This is the normal way to count spells and episodes, but generally speaking it’s worth making this choice consciously as it can make a noticeable difference to the figures.</p>
+<p>A calendar table is also a neat way to keep control of special dates that the department needs to include in business logic. For example, adding a field to a calendar table is a good way to keep track of audit days when operating theatres are closed, or one-off events such as the junior doctors’ strikes back in 2016.</p>
+<p>If you’re setting up a calendar table for the first time, there are lots of articles out there about good ways to get going. One consideration though is to make sure you have fields like <code>[Month]</code> and <code>[Week Beginning]</code> in datetime format, not just as a formatted string. Excel is much better at sorting dates if they are formatted as date, and if you need a particular formatting applied, you can always stick an Excel custom format on to finish the job.</p>

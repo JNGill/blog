@@ -86,3 +86,4 @@ sidebar: false
 - [R for Data Science](https://r4ds.had.co.nz/)
 - [ModernDive](https://moderndive.com/index.html) - learn the basic statistical workflow and R at the same time.
 - [The R Markdown Cookbook](https://bookdown.org/yihui/rmarkdown-cookbook/)
+- [Mastering Software Development in R](https://bookdown.org/rdpeng/RProgDA/)

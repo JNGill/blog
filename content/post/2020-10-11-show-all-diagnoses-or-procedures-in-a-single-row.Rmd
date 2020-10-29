@@ -26,7 +26,9 @@ conmssql <- dbConnect(odbc(),
 
 *All the data in this article is fake data generated artificially.*
 
-It's sometimes helpful to produce a listing of patients along with their full list of diagnoses or procedures. There are a few ways of going about this.
+It's sometimes helpful to produce a listing of activity along with the full list of diagnoses or procedures associated with that activity. For inpatients, that usually means starting with an episode table, containing one row per inpatient episode, and a diagnosis or procedure table, containing one row per coded diagnosis or procedure. For each episode, there can be many diagnoses or procedures. The question is, what's the best way to squash down the diagnoses or procedures into a single row? 
+
+Here are a couple of ways to go about this.
 
 ### STRING_AGG
 

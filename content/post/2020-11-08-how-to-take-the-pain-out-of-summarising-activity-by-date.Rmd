@@ -1,0 +1,103 @@
+---
+title: How to take the pain out of summarising activity by date
+author: James Gill
+date: '2020-11-08'
+slug: how-to-take-the-pain-out-of-summarising-activity-by-date
+categories:
+  - SQL
+tags:
+  - Early career
+  - SQL
+  - T-SQL
+  - Excel
+summary: 'Use a calendar table!'
+output:
+  blogdown::html_page:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+library(odbc)
+
+conmssql <- dbConnect(odbc(),
+                 Driver   = "SQL Server",
+                 Server   = "DESKTOP-5R64MMS\\SQLEXPRESS",
+                 Database = "SynthNHS",
+                 Trusted_Connection = "True")
+                 
+knitr::opts_chunk$set(connection = "conmssql")                 
+```
+
+*All data in this article is fake data, generated artificially.*
+
+I work with time series most weeks. Modern electronic patient records (EPRs) record precise timestamps for many actions. But most often, I need to aggregate the figures in some way. There are rather a lot of different possible aggregations:
+
+- By calendar or financial year;
+- By calendar or financial month; 
+- By week beginning or week ending (by the way - which day of the week is the start of the week?);
+- By day of the week;
+- By whether the day is a working day or a weekend or bank holiday;
+- etc etc.
+
+So the question is, how do we convert the timestamp from the EPR into a field containing the week or months that the timestamp fell into?
+
+Many of the StackOverflow solutions to this kind of problem involve writing pretty baroque SQL combining a variety of date functions ([Example 1](https://stackoverflow.com/questions/7168874/get-first-day-of-week-in-sql-server), [Example 2](https://stackoverflow.com/questions/1520789/how-can-i-select-the-first-day-of-a-month-in-sql), [Example 3](https://stackoverflow.com/questions/6744367/most-efficient-way-to-calculate-the-first-day-of-the-current-financial-year)). 
+
+I tend to hesitate about using these kinds of snippets. I have to think hard to convince myself the code will work for any given date. Including obscure snippets creates an extra hurdle for the next analyst who has to read the code. The functions could be pretty slow, especially if you're dealing with large tables like outpatients. And what's the guarantee that a colleague would pick Monday as the start of the week rather than Sunday?
+
+So instead, I tend to use a calendar table (also sometimes called a date dimension table). This is a table which contains one row for each calendar date. It might look something like this:
+
+```{sql calendartable}
+SELECT TOP 100 *
+        
+FROM lkp_calendar
+
+```
+
+In real life, you tend to find a bunch more fields - but I've limited it to a few examples.
+
+Summarising figures by date then becomes as easy as a `LEFT JOIN`:
+
+```{sql ep}
+SELECT dy.[Financial.Year]
+        ,dy.[Month]
+        ,COUNT(*) AS 'Finished Consultant Episodes'
+        
+FROM [episode] ipe
+LEFT JOIN lkp_calendar dy
+  ON ipe.[EndDate] = dy.[Date]
+
+GROUP BY dy.[Financial.Year]
+        ,dy.[Month]
+
+ORDER BY dy.[Financial.Year]
+        ,dy.[Month]
+
+```
+
+It's also very easy to take a look at activity that takes place at the weekend or bank holidays (without having to remember when the latter are):
+
+```{sql epworking}
+SELECT dy.[Financial.Year]
+        ,dy.[Month]
+        ,COUNT(*) AS 'Finished Consultant Episodes'
+        
+FROM [episode] ipe
+LEFT JOIN lkp_calendar dy
+  ON ipe.[EndDate] = dy.[Date]
+
+WHERE dy.[Working.Day] = 0
+
+GROUP BY dy.[Financial.Year]
+        ,dy.[Month]
+
+ORDER BY dy.[Financial.Year]
+        ,dy.[Month]
+
+```
+
+As an aside, it is worth being careful about the "index date" in the join to the calendar table. In the above query, that's `ipe.[EndDate]`, so my summary figures represent episodes which ended within each time period. This is the normal way to count spells and episodes, but generally speaking it's worth making this choice consciously as it can make a noticeable difference to the figures.
+
+A calendar table is also a neat way to keep control of special dates that the department needs to include in business logic. For example, adding a field to a calendar table is a good way to keep track of audit days when operating theatres are closed, or one-off events such as the junior doctors' strikes back in 2016.
+
+If you're setting up a calendar table for the first time, there are lots of articles out there about good ways to get going. One consideration though is to make sure you have fields like `[Month]` and `[Week Beginning]` in datetime format, not just as a formatted string. Excel is much better at sorting dates if they are formatted as date, and if you need a particular formatting applied, you can always stick an Excel custom format on to finish the job.
