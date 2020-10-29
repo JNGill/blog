@@ -101,6 +101,8 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 </div>
 <p>Each EpisodeID is appears in multiple rows - one for each procedure coded as happening during the episode.</p>
 <p>If you join this table on to your episodes table, and use the <code>WHERE</code> clause, you might be OK in simple cases, but you risk duplication if the same procedure is coded more than once in the same episode. It’s also not easy to see how to extend the query to search for episodes with a particular combination of codes.</p>
+<div id="the-exists-operator" class="section level3">
+<h3>The EXISTS operator</h3>
 <p>One alternative that I like is the <code>EXISTS</code> operator together with a correlated sub-query. An <code>EXISTS</code> condition is true if the sub-query that follows it returns some rows. In our case, we’re going to check the procedures table with a sub-query to see if it contains the procedure code we’re interested in for each row of the episode table.</p>
 <p>If we’re searching for an episode with a particular procedure code in any position, you can write something like this:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">SELECT</span> ipe.EpisodeID</span>
@@ -115,7 +117,7 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 <span id="cb2-10"><a href="#cb2-10"></a>                <span class="kw">AND</span> ipproc.ProcedureCode <span class="op">=</span> <span class="st">&#39;L291&#39;</span>)</span></code></pre></div>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["EpisodeID"],"name":[1],"type":["int"],"align":["right"]},{"label":["StartDate"],"name":[2],"type":["chr"],"align":["left"]},{"label":["EndDate"],"name":[3],"type":["chr"],"align":["left"]}],"data":[{"1":"546","2":"2020-03-06","3":"2020-03-11"},{"1":"2055","2":"2020-07-17","3":"2020-07-20"},{"1":"3079","2":"2020-07-31","3":"2020-08-02"},{"1":"3131","2":"2020-04-04","3":"2020-04-05"},{"1":"5469","2":"2020-07-13","3":"2020-07-16"},{"1":"5892","2":"2020-08-06","3":"2020-08-08"},{"1":"6812","2":"2020-03-20","3":"2020-03-21"},{"1":"7086","2":"2020-04-27","3":"2020-04-27"},{"1":"7329","2":"2020-04-09","3":"2020-04-11"},{"1":"7999","2":"2020-08-13","3":"2020-08-15"},{"1":"9491","2":"2019-09-29","3":"2019-10-02"},{"1":"12634","2":"2020-06-08","3":"2020-06-11"},{"1":"13563","2":"2019-12-09","3":"2019-12-10"},{"1":"15105","2":"2019-09-26","3":"2019-09-28"},{"1":"15390","2":"2020-06-29","3":"2020-06-30"},{"1":"15845","2":"2019-12-01","3":"2019-12-02"},{"1":"16215","2":"2020-02-27","3":"2020-03-04"},{"1":"16721","2":"2020-01-18","3":"2020-01-18"},{"1":"17726","2":"2020-07-22","3":"2020-07-25"},{"1":"18146","2":"2019-10-04","3":"2019-10-05"},{"1":"18474","2":"2020-03-16","3":"2020-03-17"},{"1":"19249","2":"2020-01-05","3":"2020-01-09"},{"1":"21273","2":"2019-12-15","3":"2019-12-15"},{"1":"24861","2":"2020-01-11","3":"2020-01-14"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":["EpisodeID"],"name":[1],"type":["int"],"align":["right"]},{"label":["StartDate"],"name":[2],"type":["S3: POSIXct"],"align":["right"]},{"label":["EndDate"],"name":[3],"type":["S3: POSIXct"],"align":["right"]}],"data":[{"1":"546","2":"2020-03-06","3":"2020-03-11"},{"1":"2055","2":"2020-07-17","3":"2020-07-20"},{"1":"3079","2":"2020-07-31","3":"2020-08-02"},{"1":"3131","2":"2020-04-04","3":"2020-04-05"},{"1":"5469","2":"2020-07-13","3":"2020-07-16"},{"1":"5892","2":"2020-08-06","3":"2020-08-08"},{"1":"6812","2":"2020-03-20","3":"2020-03-21"},{"1":"7086","2":"2020-04-27","3":"2020-04-27"},{"1":"7329","2":"2020-04-09","3":"2020-04-11"},{"1":"7999","2":"2020-08-13","3":"2020-08-15"},{"1":"9491","2":"2019-09-29","3":"2019-10-02"},{"1":"12634","2":"2020-06-08","3":"2020-06-11"},{"1":"13563","2":"2019-12-09","3":"2019-12-10"},{"1":"15105","2":"2019-09-26","3":"2019-09-28"},{"1":"15390","2":"2020-06-29","3":"2020-06-30"},{"1":"15845","2":"2019-12-01","3":"2019-12-02"},{"1":"16215","2":"2020-02-27","3":"2020-03-04"},{"1":"16721","2":"2020-01-18","3":"2020-01-18"},{"1":"17726","2":"2020-07-22","3":"2020-07-25"},{"1":"18146","2":"2019-10-04","3":"2019-10-05"},{"1":"18474","2":"2020-03-16","3":"2020-03-17"},{"1":"19249","2":"2020-01-05","3":"2020-01-09"},{"1":"21273","2":"2019-12-15","3":"2019-12-15"},{"1":"24861","2":"2020-01-11","3":"2020-01-14"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 <p>One advantage of this approach is that you can be completely confident every row of your output represents a single episode. Another is that it is straightforward to amend the subquery or add extra subqueries to search for a combination of diagnosis and procedure codes.</p>
@@ -152,6 +154,9 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 <span id="cb4-14"><a href="#cb4-14"></a>                <span class="kw">AND</span> ipproc.ProcedureCode <span class="op">=</span> <span class="st">&#39;L291&#39;</span></span>
 <span id="cb4-15"><a href="#cb4-15"></a>                <span class="kw">AND</span> ipproc2.ProcedureCode <span class="op">=</span> <span class="st">&#39;Y081&#39;</span></span>
 <span id="cb4-16"><a href="#cb4-16"></a>                      )</span></code></pre></div>
+</div>
+<div id="using-a-cte" class="section level3">
+<h3>Using a CTE</h3>
 <p>Another alternative is to prepare a CTE with the EpisodeIDs you need. This can also be a helpful approach if you want to find multiple cohorts of patients at the same time, such as different arms of a national clinical audit. For example, you could write:</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">WITH</span> cohort <span class="kw">AS</span> (</span>
 <span id="cb5-2"><a href="#cb5-2"></a><span class="kw">SELECT</span> <span class="kw">DISTINCT</span> EpisodeID</span>
@@ -176,6 +181,7 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 <span id="cb5-21"><a href="#cb5-21"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> episode ipe</span>
 <span id="cb5-22"><a href="#cb5-22"></a><span class="kw">ON</span> cohort.EpisodeID <span class="op">=</span> ipe.EpisodeID</span></code></pre></div>
 <p>If you don’t want to duplicate episodes which belong to more than one cohort in the output, you could use a series of CTEs, de-duplicate with a window function, or pivot the table on the cohort name column.</p>
+</div>
 <div id="what-not-to-do" class="section level3">
 <h3>What not to do</h3>
 <p>It’s not uncommon for NHS data warehouses to contain a “wide” version of the episodes table, with a separate column for each diagnosis code. One good reason to have a table like this is that it is closer to the input format required by the Local Payment Grouper. It looks something like this:</p>
@@ -232,5 +238,6 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 <ul>
 <li>Some people prefer using the <code>ANY</code> keyword instead of <code>EXISTS</code> - in many cases it’s straightforward to rewrite the <code>ANY</code> version as <code>EXISTS</code> and vice versa.</li>
 <li>Clinical coders are knowledgeable, hard-working and often under-appreciated. If a coder helps you out with an ad-hoc and you get some good feedback - think about sharing it with them!</li>
+<li>Searching all the procedures and diagnoses isn’t always the right thing to do. If you only want spells where the procedure in question was the most signficant thing to happen to the patient, it might be better just to search the dominant procedure of the spell.</li>
 </ul>
 </div>

@@ -54,6 +54,8 @@ Each EpisodeID is appears in multiple rows - one for each procedure coded as hap
 
 If you join this table on to your episodes table, and use the `WHERE` clause, you might be OK in simple cases, but you risk duplication if the same procedure is coded more than once in the same episode. It's also not easy to see how to extend the query to search for episodes with a particular combination of codes.
 
+### The EXISTS operator
+
 One alternative that I like is the `EXISTS` operator together with a correlated sub-query. An `EXISTS` condition is true if the sub-query that follows it returns some rows. In our case, we're going to check the procedures table with a sub-query to see if it contains the procedure code we're interested in for each row of the episode table. 
 
 If we're searching for an episode with a particular procedure code in any position, you can write something like this:
@@ -117,6 +119,8 @@ WHERE	EXISTS (SELECT 1
 				AND ipproc2.ProcedureCode = 'Y081'
 				      )
 ```
+
+### Using a CTE
 
 Another alternative is to prepare a CTE with the EpisodeIDs you need. This can also be a helpful approach if you want to find multiple cohorts of patients at the same time, such as different arms of a national clinical audit. For example, you could write:
 
@@ -212,3 +216,4 @@ Again this is a rather verbose query, and it will be rather slow.
 
 - Some people prefer using the `ANY` keyword instead of `EXISTS` - in many cases it's straightforward to rewrite the `ANY` version as `EXISTS` and vice versa.
 - Clinical coders are knowledgeable, hard-working and often under-appreciated. If a coder helps you out with an ad-hoc and you get some good feedback - think about sharing it with them!
+- Searching all the procedures and diagnoses isn't always the right thing to do. If you only want spells where the procedure in question was the most signficant thing to happen to the patient, it might be better just to search the dominant procedure of the spell. 
