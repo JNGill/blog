@@ -1,0 +1,246 @@
+---
+title: Calculating inpatient occupancy using a calendar table
+author: James Gill
+date: '2020-11-15'
+slug: calculating-inpatient-occupancy-using-a-calendar-table
+categories:
+  - SQL
+tags:
+  - Early career
+  - SQL
+  - T-SQL
+summary: 'My preferred alternative for creating a bed census from inpatient episodes.'
+
+output:
+  blogdown::html_page:
+    df_print: paged
+---
+
+<script src="/rmarkdown-libs/accessible-code-block/empty-anchor.js"></script>
+<link href="/rmarkdown-libs/pagedtable/css/pagedtable.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/pagedtable/js/pagedtable.js"></script>
+<style type="text/css">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; } /* Alert */
+code span.an { color: #008000; } /* Annotation */
+code span.at { } /* Attribute */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #0000ff; } /* ControlFlow */
+code span.ch { color: #008080; } /* Char */
+code span.cn { } /* Constant */
+code span.co { color: #008000; } /* Comment */
+code span.cv { color: #008000; } /* CommentVar */
+code span.do { color: #008000; } /* Documentation */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.im { } /* Import */
+code span.in { color: #008000; } /* Information */
+code span.kw { color: #0000ff; } /* Keyword */
+code span.op { } /* Operator */
+code span.ot { color: #ff4000; } /* Other */
+code span.pp { color: #ff4000; } /* Preprocessor */
+code span.sc { color: #008080; } /* SpecialChar */
+code span.ss { color: #008080; } /* SpecialString */
+code span.st { color: #008080; } /* String */
+code span.va { } /* Variable */
+code span.vs { color: #008080; } /* VerbatimString */
+code span.wa { color: #008000; font-weight: bold; } /* Warning */
+</style>
+
+
+<p><em>All data in this post is fake data, generated artificially.</em></p>
+<p>Hospital beds are an expensive resource that isn’t easy to flex. Intelligence about occupancy is useful for operational management of the bed base. The traditional way to approach this is to create a “bed census”. That is, a data set which shows how many patients were in beds at midnight each day.</p>
+<p>There are a variety of ways of going about this. It’s possible to cook something up from an episodes extract in Excel, and I’ve also seen solutions that use SQL loops. For R users, there’s the <a href="https://github.com/johnmackintosh/patientcounter">patientcounter</a> package created by John Mackintosh.</p>
+<p>But my preferred solution is a set-based SQL approach using a <a href="/post/how-to-take-the-pain-out-of-summarising-activity-by-date">calendar table</a> (i.e. a reference table with one row for each calendar date).</p>
+<p>The fundamental task is to count up the number of days in which a patient is in a bed at midnight. That suggests that we should aim to create a table in which each row represents a “bed-day”. That is, a patient episode starting at 10am on 1<sup>st</sup> January and ending at 4pm on the 4<sup>th</sup> January should correspond to three rows in the new table: one for midnight on 1<sup>st</sup> January, one for midnight on 2<sup>nd</sup> January, and one for midnight on 3<sup>rd</sup> January. Then we can use <code>GROUP BY</code> to count up the number of patients in bed at midnight on each day.</p>
+<p>Let’s start by looking at all the episodes in which the patient was in hospital for part of the first week in January.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">SELECT</span> TOP <span class="dv">100</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a>    ipe.EpisodeID</span>
+<span id="cb1-3"><a href="#cb1-3"></a>        ,ipe.StartDate</span>
+<span id="cb1-4"><a href="#cb1-4"></a>        ,ipe.EndDate</span>
+<span id="cb1-5"><a href="#cb1-5"></a></span>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="kw">FROM</span> episode ipe</span>
+<span id="cb1-7"><a href="#cb1-7"></a></span>
+<span id="cb1-8"><a href="#cb1-8"></a><span class="kw">WHERE</span> ipe.EndDate <span class="op">&gt;=</span> <span class="st">&#39;2020 JAN 01&#39;</span></span>
+<span id="cb1-9"><a href="#cb1-9"></a><span class="kw">AND</span> ipe.StartDate <span class="op">&lt;</span> <span class="st">&#39;2020 JAN 08&#39;</span></span>
+<span id="cb1-10"><a href="#cb1-10"></a></span>
+<span id="cb1-11"><a href="#cb1-11"></a><span class="kw">ORDER</span> <span class="kw">BY</span> ipe.StartDate</span>
+<span id="cb1-12"><a href="#cb1-12"></a>        ,ipe.EndDate</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["EpisodeID"],"name":[1],"type":["int"],"align":["right"]},{"label":["StartDate"],"name":[2],"type":["S3: POSIXct"],"align":["right"]},{"label":["EndDate"],"name":[3],"type":["S3: POSIXct"],"align":["right"]}],"data":[{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39"},{"1":"145","2":"2019-12-21 02:19:57","3":"2020-01-14 12:23:45"},{"1":"24686","2":"2019-12-21 05:56:38","3":"2020-01-01 19:31:25"},{"1":"21191","2":"2019-12-21 23:56:14","3":"2020-01-04 14:31:56"},{"1":"11356","2":"2019-12-22 09:40:31","3":"2020-01-05 03:18:00"},{"1":"24567","2":"2019-12-22 11:44:15","3":"2020-01-02 11:18:16"},{"1":"10066","2":"2019-12-22 17:53:27","3":"2020-01-01 11:56:55"},{"1":"16211","2":"2019-12-22 20:12:38","3":"2020-01-03 02:36:02"},{"1":"15704","2":"2019-12-23 09:54:19","3":"2020-01-06 15:12:06"},{"1":"22493","2":"2019-12-23 13:01:26","3":"2020-01-12 14:21:00"},{"1":"11059","2":"2019-12-23 13:45:47","3":"2020-01-04 00:29:00"},{"1":"15043","2":"2019-12-23 14:01:50","3":"2020-01-10 07:44:12"},{"1":"24846","2":"2019-12-23 18:14:33","3":"2020-01-01 21:33:31"},{"1":"21015","2":"2019-12-23 22:32:21","3":"2020-01-04 09:09:13"},{"1":"20692","2":"2019-12-24 06:08:21","3":"2020-01-01 04:06:22"},{"1":"14567","2":"2019-12-24 06:47:56","3":"2020-01-01 16:04:19"},{"1":"3293","2":"2019-12-24 10:42:16","3":"2020-01-01 19:59:49"},{"1":"20545","2":"2019-12-24 11:21:58","3":"2020-01-02 00:47:50"},{"1":"13736","2":"2019-12-24 13:51:31","3":"2020-01-04 04:28:08"},{"1":"14957","2":"2019-12-24 14:35:15","3":"2020-01-01 01:12:36"},{"1":"15850","2":"2019-12-24 17:21:15","3":"2020-01-10 18:07:28"},{"1":"24789","2":"2019-12-24 19:26:38","3":"2020-01-03 19:14:51"},{"1":"18033","2":"2019-12-24 21:43:10","3":"2020-01-02 18:22:10"},{"1":"14743","2":"2019-12-24 22:12:23","3":"2020-01-03 09:08:06"},{"1":"20237","2":"2019-12-25 05:07:39","3":"2020-01-01 00:14:59"},{"1":"7841","2":"2019-12-25 08:21:40","3":"2020-01-03 22:30:11"},{"1":"22854","2":"2019-12-25 11:44:54","3":"2020-01-07 02:59:54"},{"1":"23378","2":"2019-12-25 14:31:20","3":"2020-01-01 19:42:31"},{"1":"5471","2":"2019-12-25 14:54:01","3":"2020-01-05 16:47:17"},{"1":"16601","2":"2019-12-25 15:09:47","3":"2020-01-01 21:28:08"},{"1":"6814","2":"2019-12-25 23:08:31","3":"2020-01-02 14:26:38"},{"1":"18640","2":"2019-12-26 00:18:42","3":"2020-01-01 15:43:10"},{"1":"23700","2":"2019-12-26 02:19:44","3":"2020-01-11 12:41:58"},{"1":"18745","2":"2019-12-26 03:17:59","3":"2020-01-01 19:45:32"},{"1":"9174","2":"2019-12-26 03:43:09","3":"2020-01-18 16:17:11"},{"1":"20046","2":"2019-12-26 06:45:53","3":"2020-01-02 06:26:11"},{"1":"20376","2":"2019-12-26 08:26:20","3":"2020-01-01 13:07:54"},{"1":"19273","2":"2019-12-26 10:31:28","3":"2020-01-08 13:42:52"},{"1":"23278","2":"2019-12-26 10:36:11","3":"2020-01-01 06:13:00"},{"1":"24775","2":"2019-12-26 14:46:33","3":"2020-01-09 23:49:19"},{"1":"9335","2":"2019-12-26 17:33:29","3":"2020-01-02 06:57:33"},{"1":"14856","2":"2019-12-26 18:14:40","3":"2020-01-01 05:57:25"},{"1":"23993","2":"2019-12-26 22:48:55","3":"2020-01-01 14:26:11"},{"1":"1724","2":"2019-12-27 01:33:33","3":"2020-01-01 16:04:09"},{"1":"17598","2":"2019-12-27 02:20:45","3":"2020-01-01 12:05:57"},{"1":"18580","2":"2019-12-27 02:38:09","3":"2020-01-02 13:07:31"},{"1":"13565","2":"2019-12-27 03:45:32","3":"2020-01-01 06:12:00"},{"1":"15130","2":"2019-12-27 05:18:54","3":"2020-01-03 11:58:24"},{"1":"20115","2":"2019-12-27 05:36:04","3":"2020-01-01 06:02:11"},{"1":"4827","2":"2019-12-27 06:52:53","3":"2020-01-01 19:22:43"},{"1":"7405","2":"2019-12-27 06:59:12","3":"2020-01-06 17:39:43"},{"1":"9971","2":"2019-12-27 07:30:28","3":"2020-01-06 06:55:58"},{"1":"10902","2":"2019-12-27 08:07:50","3":"2020-01-05 16:41:04"},{"1":"12472","2":"2019-12-27 10:21:30","3":"2020-01-08 12:17:58"},{"1":"13541","2":"2019-12-27 10:23:00","3":"2020-01-02 11:31:49"},{"1":"10581","2":"2019-12-27 10:33:04","3":"2020-01-02 04:33:58"},{"1":"686","2":"2019-12-27 12:26:04","3":"2020-01-07 10:24:52"},{"1":"13853","2":"2019-12-27 15:11:06","3":"2020-01-01 09:47:18"},{"1":"5472","2":"2019-12-27 15:18:51","3":"2020-01-03 06:29:26"},{"1":"20319","2":"2019-12-27 16:23:50","3":"2020-01-04 07:44:26"},{"1":"18803","2":"2019-12-27 18:39:37","3":"2020-01-09 10:14:03"},{"1":"15916","2":"2019-12-28 03:22:50","3":"2020-01-01 12:39:28"},{"1":"20320","2":"2019-12-28 05:00:20","3":"2020-01-02 12:22:41"},{"1":"7058","2":"2019-12-28 05:51:31","3":"2020-01-02 12:52:24"},{"1":"17662","2":"2019-12-28 07:44:24","3":"2020-01-03 01:16:52"},{"1":"20014","2":"2019-12-28 10:24:12","3":"2020-01-04 00:47:51"},{"1":"1077","2":"2019-12-28 10:56:04","3":"2020-01-01 17:11:05"},{"1":"20830","2":"2019-12-28 11:11:07","3":"2020-01-09 05:09:53"},{"1":"16143","2":"2019-12-28 11:33:57","3":"2020-01-01 03:18:44"},{"1":"23912","2":"2019-12-28 11:53:35","3":"2020-01-01 17:02:43"},{"1":"20372","2":"2019-12-28 12:12:55","3":"2020-01-05 16:56:20"},{"1":"17065","2":"2019-12-28 12:51:46","3":"2020-01-04 15:40:52"},{"1":"13395","2":"2019-12-28 14:15:13","3":"2020-01-04 06:05:45"},{"1":"14631","2":"2019-12-28 14:17:19","3":"2020-01-01 09:58:50"},{"1":"8027","2":"2019-12-28 14:28:59","3":"2020-01-02 09:11:13"},{"1":"17191","2":"2019-12-28 14:35:07","3":"2020-01-03 21:14:35"},{"1":"24191","2":"2019-12-28 15:34:16","3":"2020-01-05 19:56:17"},{"1":"16521","2":"2019-12-28 15:49:35","3":"2020-01-02 05:58:35"},{"1":"7135","2":"2019-12-28 17:40:08","3":"2020-01-02 10:28:37"},{"1":"13772","2":"2019-12-28 18:02:02","3":"2020-01-01 15:50:52"},{"1":"13140","2":"2019-12-28 18:11:00","3":"2020-01-01 12:16:26"},{"1":"23131","2":"2019-12-28 19:17:32","3":"2020-01-01 11:10:43"},{"1":"23066","2":"2019-12-28 19:38:37","3":"2020-01-03 02:36:54"},{"1":"21966","2":"2019-12-28 23:36:44","3":"2020-01-02 02:53:28"},{"1":"13206","2":"2019-12-29 00:00:10","3":"2020-01-01 21:23:43"},{"1":"10416","2":"2019-12-29 00:43:42","3":"2020-01-01 20:30:08"},{"1":"15840","2":"2019-12-29 01:59:27","3":"2020-01-03 15:56:34"},{"1":"16381","2":"2019-12-29 02:16:28","3":"2020-01-01 21:47:43"},{"1":"17585","2":"2019-12-29 03:20:12","3":"2020-01-03 02:02:03"},{"1":"22934","2":"2019-12-29 03:38:26","3":"2020-01-04 23:45:29"},{"1":"1197","2":"2019-12-29 03:48:48","3":"2020-01-02 02:05:54"},{"1":"21329","2":"2019-12-29 03:54:33","3":"2020-01-01 17:44:01"},{"1":"18922","2":"2019-12-29 04:47:37","3":"2020-01-02 12:01:18"},{"1":"22649","2":"2019-12-29 05:30:18","3":"2020-01-03 07:24:08"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[20],"max":[20]},"pages":{}}}
+  </script>
+</div>
+<p>We can then create our “bed-day” table by joining the episodes table to the calendar table. The join is written so that every row in the calendar table with a date between the start date and end date of the episode will match. Note that in the results, we now have one row for every midnight that the patient was an inpatient.</p>
+<p>It’s also worth noting I’m exploiting the default behaviour of T-SQL here. Because the dates in the <code>lkp_calendar</code> table do not have a time, T-SQL treats the date as though it represents midnight on the day in question.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">SELECT</span> TOP <span class="dv">100</span> </span>
+<span id="cb2-2"><a href="#cb2-2"></a>    ipe.EpisodeID</span>
+<span id="cb2-3"><a href="#cb2-3"></a>        ,ipe.StartDate</span>
+<span id="cb2-4"><a href="#cb2-4"></a>        ,ipe.EndDate</span>
+<span id="cb2-5"><a href="#cb2-5"></a>        ,census.[<span class="dt">Date</span>] <span class="kw">AS</span> <span class="st">&#39;Census Date&#39;</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a></span>
+<span id="cb2-7"><a href="#cb2-7"></a><span class="kw">FROM</span> episode ipe</span>
+<span id="cb2-8"><a href="#cb2-8"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> lkp_calendar census </span>
+<span id="cb2-9"><a href="#cb2-9"></a>    <span class="kw">ON</span> census.[<span class="dt">Date</span>] <span class="op">&gt;=</span> ipe.StartDate </span>
+<span id="cb2-10"><a href="#cb2-10"></a>        <span class="kw">AND</span> census.[<span class="dt">Date</span>] <span class="op">&lt;</span> ipe.EndDate</span>
+<span id="cb2-11"><a href="#cb2-11"></a></span>
+<span id="cb2-12"><a href="#cb2-12"></a><span class="kw">WHERE</span> ipe.EndDate <span class="op">&gt;=</span> <span class="st">&#39;2020 JAN 01&#39;</span></span>
+<span id="cb2-13"><a href="#cb2-13"></a><span class="kw">AND</span> ipe.StartDate <span class="op">&lt;</span> <span class="st">&#39;2020 JAN 08&#39;</span></span>
+<span id="cb2-14"><a href="#cb2-14"></a></span>
+<span id="cb2-15"><a href="#cb2-15"></a><span class="kw">ORDER</span> <span class="kw">BY</span> ipe.StartDate</span>
+<span id="cb2-16"><a href="#cb2-16"></a>        ,ipe.EndDate</span>
+<span id="cb2-17"><a href="#cb2-17"></a>        ,census.[<span class="dt">Date</span>]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["EpisodeID"],"name":[1],"type":["int"],"align":["right"]},{"label":["StartDate"],"name":[2],"type":["S3: POSIXct"],"align":["right"]},{"label":["EndDate"],"name":[3],"type":["S3: POSIXct"],"align":["right"]},{"label":["Census Date"],"name":[4],"type":["S3: POSIXct"],"align":["right"]}],"data":[{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-18"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-19"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-20"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-21"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-22"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-23"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-24"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-25"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-26"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-27"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-28"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-29"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-30"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2019-12-31"},{"1":"18252","2":"2019-12-17 20:00:37","3":"2020-01-01 07:56:57","4":"2020-01-01"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-19"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-20"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-21"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-22"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-23"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-24"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-25"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-26"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-27"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-28"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-29"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-30"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2019-12-31"},{"1":"22661","2":"2019-12-18 02:43:59","3":"2020-01-01 21:30:17","4":"2020-01-01"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-19"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-20"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-21"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-22"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-23"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-24"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-25"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-26"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-27"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-28"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-29"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-30"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2019-12-31"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2020-01-01"},{"1":"16943","2":"2019-12-18 23:53:33","3":"2020-01-02 10:23:01","4":"2020-01-02"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-20"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-21"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-22"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-23"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-24"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-25"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-26"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-27"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-28"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-29"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-30"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2019-12-31"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2020-01-01"},{"1":"17178","2":"2019-12-19 19:24:13","3":"2020-01-02 02:43:56","4":"2020-01-02"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-21"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-22"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-23"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-24"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-25"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-26"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-27"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-28"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-29"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-30"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2019-12-31"},{"1":"22834","2":"2019-12-20 03:37:55","3":"2020-01-01 06:18:38","4":"2020-01-01"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-21"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-22"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-23"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-24"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-25"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-26"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-27"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-28"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-29"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-30"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2019-12-31"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2020-01-01"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2020-01-02"},{"1":"13107","2":"2019-12-20 17:08:33","3":"2020-01-03 17:55:48","4":"2020-01-03"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-21"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-22"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-23"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-24"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-25"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-26"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-27"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-28"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-29"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-30"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2019-12-31"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2020-01-01"},{"1":"17750","2":"2019-12-20 17:21:02","3":"2020-01-02 04:58:39","4":"2020-01-02"},{"1":"145","2":"2019-12-21 02:19:57","3":"2020-01-14 12:23:45","4":"2019-12-22"},{"1":"145","2":"2019-12-21 02:19:57","3":"2020-01-14 12:23:45","4":"2019-12-23"},{"1":"145","2":"2019-12-21 02:19:57","3":"2020-01-14 12:23:45","4":"2019-12-24"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[20],"max":[20]},"pages":{}}}
+  </script>
+</div>
+<p>Finally, we can calculate the overall occupancy on each day by using a <code>GROUP BY</code>. I’ve swapped the <code>WHERE</code> clause to return just the census dates we’re interested in.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">SELECT</span> census.[<span class="dt">Date</span>]</span>
+<span id="cb3-2"><a href="#cb3-2"></a>      ,<span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> <span class="st">&#39;Patients in Bed at Midnight&#39;</span></span>
+<span id="cb3-3"><a href="#cb3-3"></a></span>
+<span id="cb3-4"><a href="#cb3-4"></a><span class="kw">FROM</span> episode ipe</span>
+<span id="cb3-5"><a href="#cb3-5"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> lkp_calendar census </span>
+<span id="cb3-6"><a href="#cb3-6"></a>    <span class="kw">ON</span> census.[<span class="dt">Date</span>] <span class="op">&gt;=</span> ipe.StartDate </span>
+<span id="cb3-7"><a href="#cb3-7"></a>        <span class="kw">AND</span> census.[<span class="dt">Date</span>] <span class="op">&lt;</span> ipe.EndDate</span>
+<span id="cb3-8"><a href="#cb3-8"></a></span>
+<span id="cb3-9"><a href="#cb3-9"></a><span class="kw">WHERE</span> census.[<span class="dt">Date</span>] <span class="op">&gt;=</span> <span class="st">&#39;2020 JAN 01&#39;</span></span>
+<span id="cb3-10"><a href="#cb3-10"></a><span class="kw">AND</span> census.[<span class="dt">Date</span>] <span class="op">&lt;</span> <span class="st">&#39;2020 JAN 08&#39;</span></span>
+<span id="cb3-11"><a href="#cb3-11"></a></span>
+<span id="cb3-12"><a href="#cb3-12"></a><span class="kw">GROUP</span> <span class="kw">BY</span> census.[<span class="dt">Date</span>]</span>
+<span id="cb3-13"><a href="#cb3-13"></a></span>
+<span id="cb3-14"><a href="#cb3-14"></a><span class="kw">ORDER</span> <span class="kw">BY</span> census.[<span class="dt">Date</span>]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["Date"],"name":[1],"type":["S3: POSIXct"],"align":["right"]},{"label":["Patients in Bed at Midnight"],"name":[2],"type":["int"],"align":["right"]}],"data":[{"1":"2020-01-01","2":"206"},{"1":"2020-01-02","2":"192"},{"1":"2020-01-03","2":"193"},{"1":"2020-01-04","2":"196"},{"1":"2020-01-05","2":"193"},{"1":"2020-01-06","2":"193"},{"1":"2020-01-07","2":"190"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[20],"max":[20]},"pages":{}}}
+  </script>
+</div>
+<div id="occupancy-by-specialty" class="section level3">
+<h3>Occupancy by specialty</h3>
+<p>One advantage of this approach is that it’s very easy to analyse the figures by units such as specialty, ward or admission method. Just add the required aggregates to the <code>SELECT</code> and <code>GROUP BY</code> clauses.</p>
+<p>Below, I’ve also limited the query to a small number of specialties to make it a bit easier to see what’s going on. As ever, this is completely fake data so the numbers may look a little odd!</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">SELECT</span> census.[<span class="dt">Date</span>]</span>
+<span id="cb4-2"><a href="#cb4-2"></a>        ,spec.Meaning <span class="kw">AS</span> <span class="st">&#39;Specialty&#39;</span></span>
+<span id="cb4-3"><a href="#cb4-3"></a>        ,<span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> <span class="st">&#39;Patients in Bed at Midnight&#39;</span></span>
+<span id="cb4-4"><a href="#cb4-4"></a></span>
+<span id="cb4-5"><a href="#cb4-5"></a><span class="kw">FROM</span> episode ipe</span>
+<span id="cb4-6"><a href="#cb4-6"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> lkp_calendar census </span>
+<span id="cb4-7"><a href="#cb4-7"></a>    <span class="kw">ON</span> census.[<span class="dt">Date</span>] <span class="op">&gt;=</span> ipe.StartDate </span>
+<span id="cb4-8"><a href="#cb4-8"></a>        <span class="kw">AND</span> census.[<span class="dt">Date</span>] <span class="op">&lt;</span> ipe.EndDate</span>
+<span id="cb4-9"><a href="#cb4-9"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> lkp_mainspecialty spec</span>
+<span id="cb4-10"><a href="#cb4-10"></a>    <span class="kw">ON</span> spec.Code <span class="op">=</span> ipe.MainSpecialtyCode</span>
+<span id="cb4-11"><a href="#cb4-11"></a></span>
+<span id="cb4-12"><a href="#cb4-12"></a><span class="kw">WHERE</span> census.[<span class="dt">Date</span>] <span class="op">&gt;=</span> <span class="st">&#39;2020 JAN 01&#39;</span></span>
+<span id="cb4-13"><a href="#cb4-13"></a><span class="kw">AND</span> census.[<span class="dt">Date</span>] <span class="op">&lt;</span> <span class="st">&#39;2020 JAN 08&#39;</span></span>
+<span id="cb4-14"><a href="#cb4-14"></a><span class="kw">AND</span> spec.Code <span class="kw">IN</span> (<span class="dv">100</span>, <span class="dv">101</span>, <span class="dv">110</span>, <span class="dv">130</span>)</span>
+<span id="cb4-15"><a href="#cb4-15"></a></span>
+<span id="cb4-16"><a href="#cb4-16"></a><span class="kw">GROUP</span> <span class="kw">BY</span> census.[<span class="dt">Date</span>]</span>
+<span id="cb4-17"><a href="#cb4-17"></a>            ,spec.Meaning</span>
+<span id="cb4-18"><a href="#cb4-18"></a></span>
+<span id="cb4-19"><a href="#cb4-19"></a><span class="kw">ORDER</span> <span class="kw">BY</span> spec.Meaning </span>
+<span id="cb4-20"><a href="#cb4-20"></a>            ,census.[<span class="dt">Date</span>]</span>
+<span id="cb4-21"><a href="#cb4-21"></a>            </span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["Date"],"name":[1],"type":["S3: POSIXct"],"align":["right"]},{"label":["Specialty"],"name":[2],"type":["chr"],"align":["left"]},{"label":["Patients in Bed at Midnight"],"name":[3],"type":["int"],"align":["right"]}],"data":[{"1":"2020-01-01","2":"General Surgery","3":"1"},{"1":"2020-01-02","2":"General Surgery","3":"4"},{"1":"2020-01-03","2":"General Surgery","3":"3"},{"1":"2020-01-04","2":"General Surgery","3":"3"},{"1":"2020-01-05","2":"General Surgery","3":"3"},{"1":"2020-01-06","2":"General Surgery","3":"2"},{"1":"2020-01-07","2":"General Surgery","3":"2"},{"1":"2020-01-01","2":"Ophthalmology","3":"2"},{"1":"2020-01-02","2":"Ophthalmology","3":"2"},{"1":"2020-01-03","2":"Ophthalmology","3":"3"},{"1":"2020-01-04","2":"Ophthalmology","3":"4"},{"1":"2020-01-05","2":"Ophthalmology","3":"2"},{"1":"2020-01-06","2":"Ophthalmology","3":"2"},{"1":"2020-01-07","2":"Ophthalmology","3":"2"},{"1":"2020-01-01","2":"Trauma and Orthopaedics","3":"6"},{"1":"2020-01-02","2":"Trauma and Orthopaedics","3":"5"},{"1":"2020-01-03","2":"Trauma and Orthopaedics","3":"5"},{"1":"2020-01-04","2":"Trauma and Orthopaedics","3":"5"},{"1":"2020-01-05","2":"Trauma and Orthopaedics","3":"3"},{"1":"2020-01-06","2":"Trauma and Orthopaedics","3":"2"},{"1":"2020-01-07","2":"Trauma and Orthopaedics","3":"2"},{"1":"2020-01-01","2":"Urology","3":"2"},{"1":"2020-01-02","2":"Urology","3":"5"},{"1":"2020-01-03","2":"Urology","3":"4"},{"1":"2020-01-04","2":"Urology","3":"2"},{"1":"2020-01-05","2":"Urology","3":"3"},{"1":"2020-01-06","2":"Urology","3":"2"},{"1":"2020-01-07","2":"Urology","3":"2"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[20],"max":[20]},"pages":{}}}
+  </script>
+</div>
+</div>
+<div id="admitted-or-discharged-each-day" class="section level3">
+<h3>Admitted or discharged each day</h3>
+<p>If you’re undertaking a piece of work about patient flow, you may well want the number of patients admitted or discharged each day too. Again, the above approach makes this straightforward.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">SELECT</span> census.[<span class="dt">Date</span>]</span>
+<span id="cb5-2"><a href="#cb5-2"></a>        ,<span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> <span class="st">&#39;Patients in Bed at Midnight&#39;</span></span>
+<span id="cb5-3"><a href="#cb5-3"></a>        ,<span class="fu">SUM</span>(<span class="cf">CASE</span> <span class="cf">WHEN</span> <span class="fu">CAST</span>(ipe.StartDate <span class="kw">AS</span> <span class="dt">date</span>) <span class="op">=</span> census.[<span class="dt">Date</span>] <span class="op">-</span> <span class="dv">1</span></span>
+<span id="cb5-4"><a href="#cb5-4"></a>            <span class="cf">THEN</span> <span class="dv">1</span></span>
+<span id="cb5-5"><a href="#cb5-5"></a>            <span class="cf">ELSE</span> <span class="dv">0</span></span>
+<span id="cb5-6"><a href="#cb5-6"></a>            <span class="cf">END</span>) <span class="kw">AS</span> <span class="st">&#39;Admissions&#39;</span></span>
+<span id="cb5-7"><a href="#cb5-7"></a>        ,<span class="fu">SUM</span>(<span class="cf">CASE</span> <span class="cf">WHEN</span> <span class="fu">CAST</span>(ipe.EndDate <span class="kw">AS</span> <span class="dt">date</span>) <span class="op">=</span> census.[<span class="dt">Date</span>] </span>
+<span id="cb5-8"><a href="#cb5-8"></a>            <span class="cf">THEN</span> <span class="dv">1</span></span>
+<span id="cb5-9"><a href="#cb5-9"></a>            <span class="cf">ELSE</span> <span class="dv">0</span></span>
+<span id="cb5-10"><a href="#cb5-10"></a>            <span class="cf">END</span>) <span class="kw">AS</span> <span class="st">&#39;Discharges&#39;</span></span>
+<span id="cb5-11"><a href="#cb5-11"></a></span>
+<span id="cb5-12"><a href="#cb5-12"></a><span class="kw">FROM</span> episode ipe</span>
+<span id="cb5-13"><a href="#cb5-13"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> lkp_calendar census </span>
+<span id="cb5-14"><a href="#cb5-14"></a>    <span class="kw">ON</span> census.[<span class="dt">Date</span>] <span class="op">&gt;=</span> ipe.StartDate </span>
+<span id="cb5-15"><a href="#cb5-15"></a>        <span class="kw">AND</span> census.[<span class="dt">Date</span>] <span class="op">&lt;</span> ipe.EndDate</span>
+<span id="cb5-16"><a href="#cb5-16"></a></span>
+<span id="cb5-17"><a href="#cb5-17"></a><span class="kw">WHERE</span> census.[<span class="dt">Date</span>] <span class="op">&gt;=</span> <span class="st">&#39;2020 JAN 01&#39;</span></span>
+<span id="cb5-18"><a href="#cb5-18"></a><span class="kw">AND</span> census.[<span class="dt">Date</span>] <span class="op">&lt;</span> <span class="st">&#39;2020 JAN 08&#39;</span></span>
+<span id="cb5-19"><a href="#cb5-19"></a></span>
+<span id="cb5-20"><a href="#cb5-20"></a><span class="kw">GROUP</span> <span class="kw">BY</span> census.[<span class="dt">Date</span>]</span>
+<span id="cb5-21"><a href="#cb5-21"></a></span>
+<span id="cb5-22"><a href="#cb5-22"></a><span class="kw">ORDER</span> <span class="kw">BY</span> census.[<span class="dt">Date</span>]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["Date"],"name":[1],"type":["S3: POSIXct"],"align":["right"]},{"label":["Patients in Bed at Midnight"],"name":[2],"type":["int"],"align":["right"]},{"label":["Admissions"],"name":[3],"type":["int"],"align":["right"]},{"label":["Discharges"],"name":[4],"type":["int"],"align":["right"]}],"data":[{"1":"2020-01-01","2":"206","3":"45","4":"58"},{"1":"2020-01-02","2":"192","3":"44","4":"62"},{"1":"2020-01-03","2":"193","3":"63","4":"50"},{"1":"2020-01-04","2":"196","3":"53","4":"56"},{"1":"2020-01-05","2":"193","3":"53","4":"51"},{"1":"2020-01-06","2":"193","3":"51","4":"49"},{"1":"2020-01-07","2":"190","3":"46","4":"58"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[20],"max":[20]},"pages":{}}}
+  </script>
+</div>
+<p>Note that the admissions column counts the admissions that took place leading up to the census date in question, while the discharges column counts discharges in the 24 hours following the census date. This may not be the behaviour you need!</p>
+</div>
+<div id="occupancy-at-times-other-than-midnight" class="section level3">
+<h3>Occupancy at times other than midnight</h3>
+<p>It’s also straightforward to look at occupancy at times other than midnight. This might come in handy for looking into delays to discharge. The extra step is to extend the calendar table to include one row for every timestamp for which you need a patient count - in the example below I’ve done this in a CTE.</p>
+<p>In the query below, I’ve used a <a href="https://docs.microsoft.com/en-us/sql/t-sql/queries/table-value-constructor-transact-sql?view=sql-server-ver15">table value constructor</a>, but if you have to do this often it’s probably better to make and use a clock table.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">WITH</span> calendarwithtimes <span class="kw">AS</span> </span>
+<span id="cb6-2"><a href="#cb6-2"></a>    (</span>
+<span id="cb6-3"><a href="#cb6-3"></a>    <span class="kw">SELECT</span> DATEADD(<span class="kw">hour</span>, clock.hr, census.[<span class="dt">Date</span>]) <span class="kw">AS</span> <span class="st">&#39;Census Date and Time&#39;</span></span>
+<span id="cb6-4"><a href="#cb6-4"></a></span>
+<span id="cb6-5"><a href="#cb6-5"></a>    <span class="kw">FROM</span> lkp_calendar census</span>
+<span id="cb6-6"><a href="#cb6-6"></a>    <span class="kw">LEFT</span> <span class="kw">JOIN</span> (<span class="kw">VALUES</span> (<span class="dv">0</span>), (<span class="dv">6</span>), (<span class="dv">12</span>), (<span class="dv">18</span>)) <span class="kw">AS</span> clock(hr)</span>
+<span id="cb6-7"><a href="#cb6-7"></a>      <span class="kw">ON</span> <span class="dv">1</span> <span class="op">=</span> <span class="dv">1</span> </span>
+<span id="cb6-8"><a href="#cb6-8"></a>    )</span>
+<span id="cb6-9"><a href="#cb6-9"></a></span>
+<span id="cb6-10"><a href="#cb6-10"></a><span class="kw">SELECT</span> census.[Census <span class="dt">Date</span> <span class="kw">and</span> <span class="dt">Time</span>]</span>
+<span id="cb6-11"><a href="#cb6-11"></a>        ,<span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> <span class="st">&#39;Patients in Bed&#39;</span></span>
+<span id="cb6-12"><a href="#cb6-12"></a></span>
+<span id="cb6-13"><a href="#cb6-13"></a><span class="kw">FROM</span> calendarwithtimes census</span>
+<span id="cb6-14"><a href="#cb6-14"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> episode ipe</span>
+<span id="cb6-15"><a href="#cb6-15"></a>    <span class="kw">ON</span> census.[Census <span class="dt">Date</span> <span class="kw">and</span> <span class="dt">Time</span>] <span class="op">&gt;=</span> ipe.StartDate </span>
+<span id="cb6-16"><a href="#cb6-16"></a>        <span class="kw">AND</span> census.[Census <span class="dt">Date</span> <span class="kw">and</span> <span class="dt">Time</span>] <span class="op">&lt;</span> ipe.EndDate</span>
+<span id="cb6-17"><a href="#cb6-17"></a></span>
+<span id="cb6-18"><a href="#cb6-18"></a><span class="kw">WHERE</span> census.[Census <span class="dt">Date</span> <span class="kw">and</span> <span class="dt">Time</span>] <span class="op">&gt;=</span> <span class="st">&#39;2020 JAN 01&#39;</span></span>
+<span id="cb6-19"><a href="#cb6-19"></a><span class="kw">AND</span> census.[Census <span class="dt">Date</span> <span class="kw">and</span> <span class="dt">Time</span>] <span class="op">&lt;</span> <span class="st">&#39;2020 JAN 08&#39;</span></span>
+<span id="cb6-20"><a href="#cb6-20"></a></span>
+<span id="cb6-21"><a href="#cb6-21"></a><span class="kw">GROUP</span> <span class="kw">BY</span> census.[Census <span class="dt">Date</span> <span class="kw">and</span> <span class="dt">Time</span>]</span>
+<span id="cb6-22"><a href="#cb6-22"></a></span>
+<span id="cb6-23"><a href="#cb6-23"></a><span class="kw">ORDER</span> <span class="kw">BY</span> census.[Census <span class="dt">Date</span> <span class="kw">and</span> <span class="dt">Time</span>]</span></code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["Census Date and Time"],"name":[1],"type":["S3: POSIXct"],"align":["right"]},{"label":["Patients in Bed"],"name":[2],"type":["int"],"align":["right"]}],"data":[{"1":"2020-01-01 00:00:00","2":"206"},{"1":"2020-01-01 06:00:00","2":"215"},{"1":"2020-01-01 12:00:00","2":"207"},{"1":"2020-01-01 18:00:00","2":"197"},{"1":"2020-01-02 00:00:00","2":"192"},{"1":"2020-01-02 06:00:00","2":"199"},{"1":"2020-01-02 12:00:00","2":"196"},{"1":"2020-01-02 18:00:00","2":"197"},{"1":"2020-01-03 00:00:00","2":"193"},{"1":"2020-01-03 06:00:00","2":"198"},{"1":"2020-01-03 12:00:00","2":"193"},{"1":"2020-01-03 18:00:00","2":"187"},{"1":"2020-01-04 00:00:00","2":"196"},{"1":"2020-01-04 06:00:00","2":"201"},{"1":"2020-01-04 12:00:00","2":"201"},{"1":"2020-01-04 18:00:00","2":"196"},{"1":"2020-01-05 00:00:00","2":"193"},{"1":"2020-01-05 06:00:00","2":"197"},{"1":"2020-01-05 12:00:00","2":"196"},{"1":"2020-01-05 18:00:00","2":"199"},{"1":"2020-01-06 00:00:00","2":"193"},{"1":"2020-01-06 06:00:00","2":"188"},{"1":"2020-01-06 12:00:00","2":"181"},{"1":"2020-01-06 18:00:00","2":"192"},{"1":"2020-01-07 00:00:00","2":"190"},{"1":"2020-01-07 06:00:00","2":"191"},{"1":"2020-01-07 12:00:00","2":"192"},{"1":"2020-01-07 18:00:00","2":"180"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[20],"max":[20]},"pages":{}}}
+  </script>
+</div>
+</div>

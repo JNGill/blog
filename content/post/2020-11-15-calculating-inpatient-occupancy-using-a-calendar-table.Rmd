@@ -1,0 +1,211 @@
+---
+title: Calculating inpatient occupancy using a calendar table
+author: James Gill
+date: '2020-11-15'
+slug: calculating-inpatient-occupancy-using-a-calendar-table
+categories:
+  - SQL
+tags:
+  - Early career
+  - SQL
+  - T-SQL
+summary: 'My preferred alternative for creating a bed census from inpatient episodes.'
+
+output:
+  blogdown::html_page:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+library(odbc)
+
+conmssql <- dbConnect(odbc(),
+                 Driver   = "SQL Server",
+                 Server   = "DESKTOP-5R64MMS\\SQLEXPRESS",
+                 Database = "SynthNHS",
+                 Trusted_Connection = "True")
+
+knitr::opts_chunk$set(connection = "conmssql")
+```
+
+*All data in this post is fake data, generated artificially.*
+
+Hospital beds are an expensive resource that isn't easy to flex. Intelligence about occupancy is useful for operational management of the bed base. The traditional way to approach this is to create a "bed census". That is, a data set which shows how many patients were in beds at midnight each day.
+
+There are a variety of ways of going about this. It's possible to cook something up from an episodes extract in Excel, and I've also seen solutions that use SQL loops. For R users, there's the [patientcounter](https://github.com/johnmackintosh/patientcounter) package created by John Mackintosh.
+
+But my preferred solution is a set-based SQL approach using a [calendar table](/post/how-to-take-the-pain-out-of-summarising-activity-by-date) (i.e. a reference table with one row for each calendar date).
+
+The fundamental task is to count up the number of days in which a patient is in a bed at midnight. That suggests that we should aim to create a table in which each row represents a "bed-day". That is, a patient episode starting at 10am on 1<sup>st</sup> January and ending at 4pm on the 4<sup>th</sup> January should correspond to three rows in the new table: one for midnight on 1<sup>st</sup> January, one for midnight on 2<sup>nd</sup> January, and one for midnight on 3<sup>rd</sup> January. Then we can use `GROUP BY` to count up the number of patients in bed at midnight on each day.
+
+Let's start by looking at all the episodes in which the patient was in hospital for part of the first week in January.
+
+```{sql epsiodes, output.var = "eptbl", results = 'hide'}
+SELECT TOP 100
+    ipe.EpisodeID
+		,ipe.StartDate
+		,ipe.EndDate
+
+FROM episode ipe
+
+WHERE ipe.EndDate >= '2020 JAN 01'
+AND ipe.StartDate < '2020 JAN 08'
+
+ORDER BY ipe.StartDate
+        ,ipe.EndDate
+
+```
+``` {r episodesprint, echo = FALSE, rows.print = 20}
+eptbl
+```
+
+We can then create our "bed-day" table by joining the episodes table to the calendar table. The join is written so that every row in the calendar table with a date between the start date and end date of the episode will match. Note that in the results, we now have one row for every midnight that the patient was an inpatient.
+
+It's also worth noting I'm exploiting the default behaviour of T-SQL here. Because the dates in the `lkp_calendar` table do not have a time, T-SQL treats the date as though it represents midnight on the day in question.
+
+```{sql beddays, output.var = "bdtbl", results = 'hide'}
+SELECT TOP 100 
+    ipe.EpisodeID
+		,ipe.StartDate
+		,ipe.EndDate
+		,census.[Date] AS 'Census Date'
+
+FROM episode ipe
+LEFT JOIN lkp_calendar census 
+	ON census.[Date] >= ipe.StartDate 
+		AND census.[Date] < ipe.EndDate
+
+WHERE ipe.EndDate >= '2020 JAN 01'
+AND ipe.StartDate < '2020 JAN 08'
+
+ORDER BY ipe.StartDate
+        ,ipe.EndDate
+        ,census.[Date]
+```
+``` {r beddaysprint, echo = FALSE, rows.print = 20}
+bdtbl
+```
+
+Finally, we can calculate the overall occupancy on each day by using a `GROUP BY`. I've swapped the `WHERE` clause to return just the census dates we're interested in.
+
+```{sql occupancy, output.var = "occtbl", results = 'hide'}
+SELECT census.[Date]
+      ,COUNT(*) AS 'Patients in Bed at Midnight'
+
+FROM episode ipe
+LEFT JOIN lkp_calendar census 
+	ON census.[Date] >= ipe.StartDate 
+		AND census.[Date] < ipe.EndDate
+
+WHERE census.[Date] >= '2020 JAN 01'
+AND census.[Date] < '2020 JAN 08'
+
+GROUP BY census.[Date]
+
+ORDER BY census.[Date]
+```
+``` {r occupancyprint, echo = FALSE, rows.print = 20}
+occtbl
+```
+
+### Occupancy by specialty
+
+One advantage of this approach is that it's very easy to analyse the figures by units such as specialty, ward or admission method. Just add the required aggregates to the `SELECT` and `GROUP BY` clauses.
+
+Below, I've also limited the query to a small number of specialties to make it a bit easier to see what's going on. As ever, this is completely fake data so the numbers may look a little odd!
+
+```{sql occupancyspec, output.var = "occspectbl", results = 'hide'}
+SELECT census.[Date]
+		,spec.Meaning AS 'Specialty'
+		,COUNT(*) AS 'Patients in Bed at Midnight'
+
+FROM episode ipe
+LEFT JOIN lkp_calendar census 
+	ON census.[Date] >= ipe.StartDate 
+		AND census.[Date] < ipe.EndDate
+LEFT JOIN lkp_mainspecialty spec
+	ON spec.Code = ipe.MainSpecialtyCode
+
+WHERE census.[Date] >= '2020 JAN 01'
+AND census.[Date] < '2020 JAN 08'
+AND spec.Code IN (100, 101, 110, 130)
+
+GROUP BY census.[Date]
+			,spec.Meaning
+
+ORDER BY spec.Meaning 
+			,census.[Date]
+			
+```
+``` {r occupancyspecprint, echo = FALSE, rows.print = 20}
+occspectbl
+```
+
+### Admitted or discharged each day
+
+If you're undertaking a piece of work about patient flow, you may well want the number of patients admitted or discharged each day too. Again, the above approach makes this straightforward.
+
+```{sql flow, output.var = "flowtbl", results = 'hide'}
+SELECT census.[Date]
+		,COUNT(*) AS 'Patients in Bed at Midnight'
+		,SUM(CASE WHEN CAST(ipe.StartDate AS date) = census.[Date] - 1
+			THEN 1
+			ELSE 0
+			END) AS 'Admissions'
+		,SUM(CASE WHEN CAST(ipe.EndDate AS date) = census.[Date] 
+			THEN 1
+			ELSE 0
+			END) AS 'Discharges'
+
+FROM episode ipe
+LEFT JOIN lkp_calendar census 
+	ON census.[Date] >= ipe.StartDate 
+		AND census.[Date] < ipe.EndDate
+
+WHERE census.[Date] >= '2020 JAN 01'
+AND census.[Date] < '2020 JAN 08'
+
+GROUP BY census.[Date]
+
+ORDER BY census.[Date]
+```
+``` {r flowprint, echo = FALSE, rows.print = 20}
+flowtbl
+```
+
+Note that the admissions column counts the admissions that took place leading up to the census date in question, while the discharges column counts discharges in the 24 hours following the census date. This may not be the behaviour you need!
+
+### Occupancy at times other than midnight
+
+It's also straightforward to look at occupancy at times other than midnight. This might come in handy for looking into delays to discharge. The extra step is to extend the calendar table to include one row for every timestamp for which you need a patient count - in the example below I've done this in a CTE.
+
+In the query below, I've used a [table value constructor](https://docs.microsoft.com/en-us/sql/t-sql/queries/table-value-constructor-transact-sql?view=sql-server-ver15), but if you have to do this often it's probably better to make and use a clock table.
+
+```{sql flow2, output.var = "flow2tbl", results = 'hide'}
+WITH calendarwithtimes AS 
+	(
+	SELECT DATEADD(hour, clock.hr, census.[Date]) AS 'Census Date and Time'
+
+	FROM lkp_calendar census
+	LEFT JOIN (VALUES (0), (6), (12), (18)) AS clock(hr)
+	  ON 1 = 1 
+	)
+
+SELECT census.[Census Date and Time]
+		,COUNT(*) AS 'Patients in Bed'
+
+FROM calendarwithtimes census
+LEFT JOIN episode ipe
+	ON census.[Census Date and Time] >= ipe.StartDate 
+		AND census.[Census Date and Time] < ipe.EndDate
+
+WHERE census.[Census Date and Time] >= '2020 JAN 01'
+AND census.[Census Date and Time] < '2020 JAN 08'
+
+GROUP BY census.[Census Date and Time]
+
+ORDER BY census.[Census Date and Time]
+```
+``` {r flow2print, echo = FALSE, rows.print = 20}
+flow2tbl
+```
