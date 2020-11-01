@@ -46,4 +46,8 @@ The code looks like this:
 wdturnaroundtbl
 ```
 
-This code counts the midnights between the two dates, as long as the following day is a working day. In particular, requests made on a Friday and completed on Saturday or Sunday have a turnaround of 0 days, while requests made on a Sunday and completed on a Monday have a turnaround of 1 day. The behaviour for these edge cases can be adjusted as desired in the subquery using `CASTS` and choosing between strict and non-strict inequalities.
+The key is the correlated sub-query, which returns a row for each day in the calendar table (`lkp_calendar`) that's labelled as a working day between the request date and the completion date. The dates in the calendar table don't have a time, so SQL Server interprets them as midnight on the date in question. Therefore the code counts the midnights between the two dates, as long as the following day is a working day. 
+
+In particular, requests made on a Friday and completed on Saturday or Sunday have a turnaround of 0 days, while requests made on a Sunday and completed on a Monday have a turnaround of 1 day. The behaviour for these edge cases can be adjusted as desired in the sub-query using `CASTS` and choosing between strict and non-strict inequalities.
+
+There are lots of alternative approaches out there for counting working days. I like this approach because it's a clean way to account for bank holidays. I also find it easier to reason about our calendar table, which is very familiar to me, than I do to reason about some of the more obscure date functions in T-SQL.
