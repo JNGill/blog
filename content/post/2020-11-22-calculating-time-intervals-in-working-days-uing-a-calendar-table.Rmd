@@ -1,0 +1,49 @@
+---
+title: Calculating time intervals in working days using a calendar table
+author: James Gill
+date: '2020-11-22'
+slug: calculating-time-intervals-in-working-days-using-a-calendar-table
+categories:
+  - SQL
+tags:
+  - Early career
+  - SQL
+  - T-SQL
+summary: 'Yet another good reason to maintain a calendar table.'
+output:
+  blogdown::html_page:
+    df_print: paged
+---
+
+*All data in this post is fake data, generated artificially.*
+
+```{r setup, include=FALSE}
+library(odbc)
+
+conmssql <- dbConnect(odbc(),
+                 Driver   = "SQL Server",
+                 Server   = "DESKTOP-5R64MMS\\SQLEXPRESS",
+                 Database = "SynthNHS",
+                 Trusted_Connection = "True")
+                 
+knitr::opts_chunk$set(connection = "conmssql")                 
+```
+
+```{sql prepareexample, include=FALSE, code=readr::read_file("2020-11-22-prepare-example.sql")}
+#prepare example table
+```
+
+I sometimes want to look at waiting times or turnaround times measured only in working days. This might be when thinking about a service which is only open on working days. Sometimes I've also seen service-level agreements specify performance metrics measured in working days.
+
+A calendar table - a table in which each record represents a single calendar day - gives you a neat way of doing that.
+
+The code looks like this:
+
+```{sql wdturnaround, output.var = "wdturnaroundtbl", results = 'hide', code=readr::read_file("2020-11-22-turnaround-example.sql")}
+
+```
+``` {r wdturnaroundprint, echo = FALSE, rows.print = 20}
+wdturnaroundtbl
+```
+
+This code counts the midnights between the two dates, as long as the following day is a working day. In particular, requests made on a Friday and completed on Saturday or Sunday have a turnaround of 0 days, while requests made on a Sunday and completed on a Monday have a turnaround of 1 day. The behaviour for these edge cases can be adjusted as desired in the subquery using `CASTS` and choosing between strict and non-strict inequalities.
