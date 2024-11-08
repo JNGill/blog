@@ -1,0 +1,38 @@
+---
+title: Playing with the Invisible Calendar from Invisible Computers
+author: James Gill
+date: '2024-02-10'
+slug: invisible-computers
+categories:
+  - Hobby Projects
+tags:
+  - Raspberry Pi
+  - Python
+  - Hobby Project
+summary: 'A hobby project with an e-paper display.'
+
+---
+
+
+
+<p><a href="https://www.invisible-computers.com/">Invisible Computers</a> is a German start-up. They make an e-paper product, with a black and white, non-backlit screen, like a Kindle but with no interactivity. Instead, it displays a calendar or other information. I love e-paper and devices that are open to customisation, so I couldn’t resist getting one to try out.</p>
+<p>The wooden frame and unlit screen do look genuinely homely; much better than a glowing LED panel. The build quality is nice with no rough edges or big gaps.</p>
+<p>A mobile app must be used for configuration, and there are two options for getting information onto the screen. The most user-friendly option is providing credentials for a Google Calendar to be displayed. The second allows you to provide a URL which serves an 800 x 480 bitmap image.</p>
+<p>I wanted to show train times and maybe traffic - and to do some tinkering! - so I went straight for the second option.</p>
+<p>My initial idea was to write and schedule a script to screenshot a couple of webpages and serve the resulting image. I had a spare Raspberry Pi to play with - so this seemed perfect. It’s been quite a while since I did a Pi project similar to this, and despite R being my default choice I had a vague memory that it took me a while to get running on the Pi last time, so I just went ahead with Python. I think it would have been no more effort to write in R: there is a Selenium library for R, and image libraries like magick and imager.</p>
+<p>Serving the image locally was a non-starter, since the device receives images from a back-end service rather than directly. (I only realised this after I had done a small amount of Nginx configuration.) So instead, I uploaded it to an image hosting service - mission complete.</p>
+<p>As an aside, this was the first hobby project where I’ve used ChatGPT to help with the planning and scripting. This project played to its strengths: Raspberry Pi, Python and Nginx are all open and well-documented on the public internet. This isn’t the case with a lot of the technology I work with in my day-job, and I found ChatGPT’s responses much more accurate and relevant when working on this. It still made small coding errors but usually could correct them when pointed out. It did suffer from not being able to see the device or websites. It doesn’t feel like we’re going to be seeing these models at work though until more enterprise-y solutions for private LLMs that utilise proprietary data develop.</p>
+<p>The downsides over e-paper products designed more for hobbyists like <a href="https://docs.paperd.ink/docs/software/getting-started/">paperdink</a> are:</p>
+<ul>
+<li>the restrictions on the image size and format,</li>
+<li>the requirement the images be publicly hosted, and</li>
+<li>the inability to control the refresh rate.</li>
+</ul>
+<p>The advantages are:</p>
+<ul>
+<li>straightforward wifi setup,</li>
+<li>slick calendar display (if that’s what you want), and</li>
+<li>design and build quality.</li>
+</ul>
+<p>Overall, I’m happy with the end result.</p>
+<p><img src="/img/invisiblecomputer.jpg" /></p>
