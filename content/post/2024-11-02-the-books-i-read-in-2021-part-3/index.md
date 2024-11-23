@@ -8,7 +8,6 @@ categories:
 tags:
   - 'Books'
 summary: 'The Art of Doing Science and Engineering by Richard W. Hamming'
-draft: true
 ---
 
 {{< callout type="info" title="About This Series" >}}
